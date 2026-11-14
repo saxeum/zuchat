@@ -9,7 +9,8 @@ MSG ?= hello
 LOCAL_URL ?= http://127.0.0.1:8000
 DOCKER_URL ?= http://127.0.0.1:8001
 
-.PHONY: help test lint up down image dev chat smoke chat-local smoke-local
+.PHONY: help test lint up down image dev chat smoke chat-local smoke-local \
+        tf-init tf-plan tf-apply tf-fmt github-remote
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -44,3 +45,22 @@ chat-local: ## Chat with the LOCAL dev server (make dev, :8000)
 
 smoke-local: ## End-to-end check of the LOCAL dev server
 	@APP_URL=$(LOCAL_URL) HINT="start the local server: make dev" ./scripts/smoke.sh
+
+TF_DIR ?= terraform/github
+
+tf-init: ## Initialise the GitHub Terraform root
+	cd $(TF_DIR) && terraform init
+
+tf-plan: ## Plan GitHub repository changes
+	cd $(TF_DIR) && terraform plan
+
+tf-apply: ## Apply GitHub repository changes
+	cd $(TF_DIR) && terraform apply
+
+tf-fmt: ## Format Terraform files
+	terraform fmt -recursive
+
+github-remote: ## Point origin at the repository Terraform created
+	git remote add origin "$$(cd $(TF_DIR) && terraform output -raw ssh_clone_url)" 2>/dev/null \
+	  || git remote set-url origin "$$(cd $(TF_DIR) && terraform output -raw ssh_clone_url)"
+	@git remote get-url origin

@@ -11,3 +11,9 @@ wheels/
 
 .env
 
+
+# Terraform
+terraform/**/.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars
