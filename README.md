@@ -69,6 +69,8 @@ Register the redirect URI in the Google console:
 | `make dev` (:8000) | `http://localhost:8000/auth` |
 | container (:8001) | `http://localhost:8001/auth` |
 
+Full console walkthrough: [docs/google-oauth-setup.md](docs/google-oauth-setup.md).
+
 Then open <http://localhost:8000/login>, sign in, and `/chat` accepts the
 session cookie. `ALLOWED_EMAILS` is the lock: leave it empty and *any* Google
 account can spend your DeepSeek credits; set it to your address and everyone
