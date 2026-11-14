@@ -31,8 +31,14 @@ api.add_middleware(
 
 @api.get("/login", tags=["auth"])
 async def login(request: Request) -> RedirectResponse:
-    """Send the browser to Google's consent screen."""
-    return await oauth.google.authorize_redirect(request, str(request.url_for("auth")))
+    """Send the browser to Google's consent screen.
+
+    The redirect URI comes from APP_BASE_URL, not from the request Host header:
+    Google compares it character-for-character, and 127.0.0.1 vs localhost is
+    the most common way that comparison fails.
+    """
+    redirect_uri = f"{app_base_url().rstrip('/')}/auth"
+    return await oauth.google.authorize_redirect(request, redirect_uri)
 
 
 @api.get("/auth", name="auth", tags=["auth"])
