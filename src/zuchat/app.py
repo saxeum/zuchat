@@ -1,5 +1,6 @@
 """Application wiring."""
 
+import os
 from collections.abc import AsyncIterator  # noqa: TC003 - evaluated at runtime
 from contextlib import asynccontextmanager
 
@@ -16,6 +17,9 @@ from zuchat.config import get_settings
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """Fail fast: a task without the key should die, not serve 500s."""
     get_settings()
+    if not os.environ.get("SESSION_SECRET"):
+        msg = "SESSION_SECRET is not set - start with `make up` (it loads the config)"
+        raise RuntimeError(msg)
     yield
 
 
