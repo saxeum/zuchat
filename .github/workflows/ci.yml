@@ -19,11 +19,15 @@ jobs:
       - name: Install Python
         run: uv python install
 
+      # Fails if pyproject.toml and uv.lock disagree: the two must move together.
+      - name: Check lockfile
+        run: uv lock --check
+
       - name: Install dependencies
         run: uv sync --locked
 
       - name: Lint
-        run: uv run ruff check src tests
+        run: uv run ruff check --output-format=github src tests
 
       - name: Test
         run: uv run pytest -q
