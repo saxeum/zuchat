@@ -34,3 +34,10 @@ git push -u origin fix/<name>
 git branch --show-current      # must not be master
 git status -sb                 # local and remote in sync
 ```
+
+## How to work with the human
+
+- **The human merges. The agent does not.** Open the PR, then stop.
+- **Keep going until you are blocked.** Do every step you can do yourself; do not stop at a plan or a description when the work is doable.
+- **End every turn with explicit next steps** for the human: what to merge, what to run, what to decide, in order.
+- Prefer one PR per concern, branched from current `origin/master`, with a body that explains *why*.
