@@ -8,8 +8,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from zuchat import deepseek
-from zuchat.auth import current_user, is_allowed, oauth
 from zuchat.app import create_app
+from zuchat.auth import current_user, is_allowed, oauth
 from zuchat.config import get_settings
 from zuchat.deps import deepseek_api_key
 from zuchat.main import api
