@@ -46,7 +46,10 @@ module "ecs" {
         }
       }
 
-      subnet_ids       = module.vpc.public_subnets
+      # No NAT gateway in this VPC, so the task needs a public IP to reach
+      # ECR, S3, CloudWatch and Secrets Manager.
+      assign_public_ip   = true
+      subnet_ids         = module.vpc.public_subnets
       security_group_ids = [aws_security_group.service.id]
     }
   }
