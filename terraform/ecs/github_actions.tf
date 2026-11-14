@@ -109,6 +109,14 @@ data "aws_iam_policy_document" "tf_apply" {
     resources = ["arn:aws:iam::${local.account}:policy/${var.name}-*"]
   }
 
+  # Terraform refreshes the OIDC provider it manages, so the apply role has to
+  # be able to read (and, on first run, create) that one provider.
+  statement {
+    sid       = "OidcProviders"
+    actions   = ["iam:GetOpenIDConnectProvider", "iam:CreateOpenIDConnectProvider", "iam:DeleteOpenIDConnectProvider", "iam:TagOpenIDConnectProvider", "iam:UntagOpenIDConnectProvider", "iam:UpdateOpenIDConnectProviderThumbprint"]
+    resources = ["arn:aws:iam::${local.account}:oidc-provider/token.actions.githubusercontent.com"]
+  }
+
   statement {
     sid       = "SecretsRead"
     actions   = ["secretsmanager:DescribeSecret", "secretsmanager:GetSecretValue"]
@@ -164,4 +172,18 @@ resource "aws_iam_role_policy" "tf_plan_lock" {
   name   = "state-lock"
   role   = aws_iam_role.tf_plan.id
   policy = data.aws_iam_policy_document.tf_plan_lock.json
+}
+
+# Separate statement so it cannot be lost in a larger policy edit.
+data "aws_iam_policy_document" "tf_apply_oidc" {
+  statement {
+    actions   = ["iam:GetOpenIDConnectProvider", "iam:CreateOpenIDConnectProvider", "iam:DeleteOpenIDConnectProvider", "iam:TagOpenIDConnectProvider", "iam:UntagOpenIDConnectProvider", "iam:UpdateOpenIDConnectProviderThumbprint", "iam:ListOpenIDConnectProviders"]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_role_policy" "tf_apply_oidc" {
+  name   = "oidc"
+  role   = aws_iam_role.tf_apply.id
+  policy = data.aws_iam_policy_document.tf_apply_oidc.json
 }
