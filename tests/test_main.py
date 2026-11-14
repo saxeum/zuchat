@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 
 from zuchat import deepseek
 from zuchat.auth import current_user, is_allowed, oauth
+from zuchat.app import create_app
 from zuchat.config import get_settings
 from zuchat.deps import deepseek_api_key
 from zuchat.main import api
@@ -201,14 +202,10 @@ def test_docs_serve_by_default(client: TestClient) -> None:
 
 
 def test_docs_disabled_when_asked(monkeypatch: pytest.MonkeyPatch) -> None:
-    from fastapi.testclient import TestClient as FreshClient
-
-    from zuchat.app import create_app
-
     monkeypatch.setenv("ENABLE_DOCS", "false")
     monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-test-0000000000000000")
     monkeypatch.setenv("SESSION_SECRET", "test-secret")
     get_settings.cache_clear()
-    with FreshClient(create_app()) as fresh:
+    with TestClient(create_app()) as fresh:
         assert fresh.get("/docs").status_code == 404
         assert fresh.get("/openapi.json").status_code == 404
