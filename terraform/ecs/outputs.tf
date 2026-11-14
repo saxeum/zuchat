@@ -12,3 +12,8 @@ output "certificate_validation_records" {
     }
   ]
 }
+
+output "alb_dns_name" {
+  description = "CNAME zuchat.foonix.net to this (Cloudflare: DNS only)."
+  value       = aws_lb.app.dns_name
+}
