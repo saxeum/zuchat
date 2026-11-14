@@ -6,6 +6,12 @@ on:
     types: [completed]
     branches: [master]
 
+# One apply at a time. Two merges close together used to race for the S3 lock
+# and one of them failed with a spurious "Error acquiring the state lock".
+concurrency:
+  group: terraform-apply
+  cancel-in-progress: false
+
 permissions:
   id-token: write
   contents: read
