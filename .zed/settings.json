@@ -1,0 +1,22 @@
+// Folder-specific settings
+//
+// For a full list of overridable settings, and general information on folder-specific settings,
+// see the documentation: https://zed.dev/docs/configuring-zed#settings-files
+{
+  // Enable every stable Ruff lint rule (equivalent to `select = ["ALL"]`
+  // in ruff.toml). This overrides the default E4/E7/E9/F subset.
+  // See https://docs.astral.sh/ruff/editors/settings/#select
+  "lsp": {
+    "ruff": {
+      "initialization_options": {
+        "settings": {
+          "lint": {
+            "select": ["ALL"],
+            // D103 = missing docstring in public function
+            "ignore": ["D100", "D101", "D103", "CPY001", ]
+          }
+        }
+      }
+    }
+  }
+}

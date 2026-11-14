@@ -1,0 +1,9 @@
+.venv
+.git
+.zed
+.agent-demo
+vault
+tests
+**/__pycache__
+*.pyc
+.env

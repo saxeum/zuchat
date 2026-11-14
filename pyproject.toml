@@ -1,0 +1,39 @@
+[project]
+name = "zuchat"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "zuchat", email = "noreply@users.noreply.github.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi[standard]>=0.162.5",
+    "pydantic>=2.14.3",
+    "pydantic-settings>=2.16.2",
+]
+
+[project.scripts]
+zuchat = "zuchat.main:main"
+
+[build-system]
+requires = ["uv_build>=0.13.0,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "debugpy>=1.8.22",
+    "pytest>=9.2.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff.lint]
+select = ["ALL"]
+# D103: missing docstring in public function
+ignore = ["D100", "D101", "D103", "CPY001"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests use bare asserts and HTTP status codes as literals by convention.
+"tests/**" = ["S101", "PLR2004"]

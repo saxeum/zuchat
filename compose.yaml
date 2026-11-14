@@ -1,0 +1,15 @@
+# The app. The DeepSeek key arrives as an environment variable, bootstrapped by
+# the Makefile from ~/.config/zuchat/deepseek.token.
+name: zuchat
+
+services:
+  app:
+    build: .
+    ports:
+      - "127.0.0.1:8001:8000"
+    environment:
+      # Empty default so `down`/`ps`/`logs` work without the key; the app
+      # fails fast at startup if it is unset.
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+    healthcheck:
+      test: ["CMD", "/app/.venv/bin/python", "-c", "import sys, urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2).status == 200 else 1)"]
