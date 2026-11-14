@@ -27,6 +27,7 @@ module "ecs" {
             { name = "APP_BASE_URL", value = "https://${var.domain}" },
             { name = "GOOGLE_CLIENT_ID", value = var.google_client_id },
             { name = "ALLOWED_EMAILS", value = var.allowed_emails },
+            { name = "ENABLE_DOCS", value = "false" },
           ]
 
           secrets = [
