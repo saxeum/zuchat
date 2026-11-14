@@ -4,6 +4,7 @@
 KEY_FILE ?= $(HOME)/.config/zuchat/deepseek.token
 OAUTH_JSON ?= $(HOME)/.config/zuchat/google-oauth.json
 SESSION_SECRET ?= $(shell cat $(HOME)/.config/zuchat/session-secret 2>/dev/null)
+APP_BASE_URL ?= http://localhost:8000
 GOOGLE_CLIENT_ID ?= $(shell python3 scripts/google_client.py id $(OAUTH_JSON) 2>/dev/null)
 GOOGLE_CLIENT_SECRET ?= $(shell python3 scripts/google_client.py secret $(OAUTH_JSON) 2>/dev/null)
 export GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET SESSION_SECRET ALLOWED_EMAILS APP_BASE_URL
@@ -44,6 +45,9 @@ oauth-status: ## Show whether the Google OAuth config is loaded (masked)
 	@echo "client_id     $$(printf %s '$(GOOGLE_CLIENT_ID)' | cut -c1-12)... ($(shell printf %s '$(GOOGLE_CLIENT_ID)' | wc -c) chars)"
 	@echo "client_secret $$(test -n '$(GOOGLE_CLIENT_SECRET)' && echo set || echo MISSING)"
 	@echo "session       $$(test -n '$(SESSION_SECRET)' && echo set || echo 'MISSING (cookies reset each boot)')"
+	@echo "app_base_url  $(APP_BASE_URL)"
+	@echo "we send       $(APP_BASE_URL)/auth"
+	@python3 -c "import json,sys; d=json.load(open(sys.argv[1])); w=d.get('web') or d.get('installed') or d; print('registered   ', *w.get('redirect_uris', []), sep='\n              ')" $(OAUTH_JSON) 2>/dev/null || true
 
 chat: ## Chat with the CONTAINER (default, :8001)
 	@APP_URL=$(DOCKER_URL) ./scripts/chat.sh "$(MSG)"
