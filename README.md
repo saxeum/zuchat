@@ -53,6 +53,10 @@ make down
 - `Settings` requires it; the app refuses to start without it.
 - To use a different key file: `make up KEY_FILE=/path/to/file`.
 
+## License
+
+MIT — see [LICENSE](LICENSE).
+
 ## Files
 
 | Path | Purpose |
