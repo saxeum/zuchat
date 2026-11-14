@@ -188,7 +188,7 @@ def test_security_headers_present(client: TestClient) -> None:
 
 
 def test_hsts_only_over_https(
-    client: TestClient, monkeypatch: pytest.MonkeyPatch
+    client: TestClient, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     assert "strict-transport-security" not in client.get("/health").headers
 
@@ -206,6 +206,9 @@ def test_docs_disabled_when_asked(monkeypatch: pytest.MonkeyPatch) -> None:
     from zuchat.app import create_app
 
     monkeypatch.setenv("ENABLE_DOCS", "false")
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-test-0000000000000000")
+    monkeypatch.setenv("SESSION_SECRET", "test-secret")
+    get_settings.cache_clear()
     with FreshClient(create_app()) as fresh:
         assert fresh.get("/docs").status_code == 404
         assert fresh.get("/openapi.json").status_code == 404
