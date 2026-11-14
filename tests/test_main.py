@@ -122,6 +122,22 @@ def test_chat_requires_login(monkeypatch: pytest.MonkeyPatch) -> None:
         get_settings.cache_clear()
 
 
+def test_models_requires_login(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DEEPSEEK_API_KEY", TEST_API_KEY)
+    get_settings.cache_clear()
+    api.dependency_overrides.pop(current_user, None)
+    try:
+        assert TestClient(api).get("/models").status_code == 401
+    finally:
+        api.dependency_overrides[current_user] = lambda: {"email": "test@example.com"}
+        get_settings.cache_clear()
+
+
+def test_chat_rejects_oversized_message(client: TestClient) -> None:
+    assert client.post("/chat", json={"message": "x" * 4001}).status_code == 422
+    assert client.post("/chat", json={"message": ""}).status_code == 422
+
+
 def test_models_uses_configured_key(
     client: TestClient,
     monkeypatch: pytest.MonkeyPatch,

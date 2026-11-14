@@ -3,7 +3,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, Field, ValidationError
 
 from zuchat import deepseek
 from zuchat.auth import current_user
@@ -14,7 +14,9 @@ router = APIRouter()
 
 
 class ChatRequest(BaseModel):
-    message: str
+    """Capped so a public endpoint cannot be used to send megabyte prompts."""
+
+    message: str = Field(min_length=1, max_length=4000)
 
 
 @router.get("/health", tags=["ops"])
@@ -47,6 +49,7 @@ def me(user: Annotated[dict[str, str], Depends(current_user)]) -> dict[str, str]
 @router.get("/models")
 def models(
     api_key: Annotated[str, Depends(deepseek_api_key)],
+    _user: Annotated[dict[str, str], Depends(current_user)],
 ) -> list[dict[str, object]]:
     return deepseek.models(api_key)
 
