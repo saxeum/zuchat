@@ -120,7 +120,6 @@ resource "github_repository_environment" "production" {
     custom_branch_policies = false
   }
 
-  reviewers {
-    users = [62874892]
-  }
+  # No required reviewers for now: the OIDC subject still needs this
+  # Environment, but deploys do not wait for a human.
 }
