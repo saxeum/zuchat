@@ -112,7 +112,7 @@ output "html_url" {
 
 # The gate for Terraform apply: only master, only with a human approval.
 resource "github_repository_environment" "production" {
-  repository  = github_repository.this.name
+  repository  = github_repository.repo.name
   environment = "production"
 
   deployment_branch_policy {
