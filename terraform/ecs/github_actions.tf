@@ -14,9 +14,14 @@ locals {
 
   # One subject per role. The plan role is read-only, so it may be assumed from
   # any ref; the apply role's subject *is* the gate, so it stays narrow.
+  # GitHub issues *immutable* subjects for this repo:
+  #   gh api repos/saxeum/zuchat/actions/oidc/customization/sub
+  #   -> sub_claim_prefix "repo:saxeum@343752441/zuchat@1457250024"
+  github_subject_prefix = "repo:saxeum@343752441/zuchat@1457250024"
+
   github_subjects = {
-    plan  = "repo:${local.github_repo}:*"
-    apply = "repo:${local.github_repo}:environment:${var.github_environment}"
+    plan  = "${local.github_subject_prefix}:*"
+    apply = "${local.github_subject_prefix}:environment:${var.github_environment}"
   }
 }
 
