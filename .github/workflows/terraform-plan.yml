@@ -1,0 +1,45 @@
+name: terraform-plan
+
+# Plan only, on pull requests, with credentials that cannot write.
+on: pull_request
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform/ecs
+    env:
+      TF_IN_AUTOMATION: "1"
+      TF_INPUT: "0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::619071335809:role/zuchat-tf-plan
+          aws-region: ap-southeast-2
+          mask-aws-account-id: true
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.17.1"
+
+      - name: Init
+        run: terraform init -input=false
+
+      - name: Format
+        run: terraform fmt -check -recursive
+
+      - name: Plan
+        env:
+          TF_VAR_deepseek_secret_arn: ${{ vars.DEEPSEEK_SECRET_ARN }}
+          TF_VAR_session_secret_arn: ${{ vars.SESSION_SECRET_ARN }}
+          TF_VAR_google_client_secret_arn: ${{ vars.GOOGLE_CLIENT_SECRET_ARN }}
+          TF_VAR_google_client_id: ${{ vars.GOOGLE_CLIENT_ID }}
+          TF_VAR_allowed_emails: ${{ vars.ALLOWED_EMAILS }}
+        run: terraform plan -no-color -input=false
