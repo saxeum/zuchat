@@ -55,7 +55,12 @@ variable "image_tag" {
 }
 
 variable "certificate_arn" {
-  description = "Issued ACM certificate ARN; empty means HTTP only (no OAuth)."
+  description = "Issued ACM certificate ARN. Required - a missing value must fail the plan, not delete TLS."
   type        = string
-  default     = ""
+}
+
+variable "enable_https" {
+  description = "Create the HTTPS listener (and redirect HTTP to it). Set false only while bootstrapping a certificate."
+  type        = bool
+  default     = true
 }
