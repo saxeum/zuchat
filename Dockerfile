@@ -27,4 +27,6 @@ RUN useradd --create-home --uid 10001 app \
 USER app
 
 EXPOSE 8000
-CMD ["uvicorn", "zuchat.main:api", "--host", "0.0.0.0", "--port", "8000"]
+# Trust X-Forwarded-* from the ALB so request.url reflects https.
+CMD ["uvicorn", "zuchat.main:api", "--host", "0.0.0.0", "--port", "8000", \
+     "--proxy-headers", "--forwarded-allow-ips=*"]
