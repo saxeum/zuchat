@@ -89,6 +89,8 @@ a {
 
 form {
   display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
   gap: 0.5rem;
 }
 
@@ -101,6 +103,7 @@ button {
 
 textarea {
   width: 100%;
+  min-height: 3.25rem;
   padding: 0.4rem;
   box-sizing: border-box;
   border: 1px solid currentColor;
@@ -109,8 +112,6 @@ textarea {
 }
 
 button {
-  justify-self: end;
-  margin-top: 0.25rem;
   padding: 0.4rem 0.9rem;
   border: 1px solid currentColor;
   border-radius: 6px;

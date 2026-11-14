@@ -36,6 +36,14 @@ async function whoAmI() {
   statusEl.append(link("/logout", "logout"));
 }
 
+// Enter sends; Shift+Enter is a newline.
+input.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
+    form.requestSubmit();
+  }
+});
+
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const message = input.value.trim();
