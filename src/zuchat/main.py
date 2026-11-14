@@ -1,3 +1,4 @@
+import html
 import os
 from collections.abc import AsyncIterator  # noqa: TC003 - evaluated at runtime
 from contextlib import asynccontextmanager
@@ -6,6 +7,7 @@ from typing import Annotated
 import uvicorn
 from authlib.integrations.base_client.errors import MismatchingStateError
 from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, ValidationError
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import RedirectResponse
@@ -86,9 +88,32 @@ class ChatRequest(BaseModel):
     message: str
 
 
-@api.get("/")
-def index() -> dict[str, str]:
-    return {"message": "hello world and eat more fish"}
+PAGE = """<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>zuchat</title>
+<style>body{{font-family:system-ui;margin:3rem;max-width:32rem}}</style></head>
+<body>
+  <h1>zuchat</h1>
+  <p>{status}</p>
+  <ul>
+    <li><a href="/models">models</a></li>
+    <li>{action}</li>
+  </ul>
+</body>
+</html>
+"""
+
+
+@api.get("/", response_class=HTMLResponse)
+def index(request: Request) -> str:
+    user = request.session.get("user")
+    if user:
+        status = f"Signed in as {html.escape(user.get('email', ''))}"
+        action = '<a href="/logout">logout</a>'
+    else:
+        status = "Not signed in."
+        action = '<a href="/login">login</a>'
+    return PAGE.format(status=status, action=action)
 
 
 @api.get("/health", tags=["ops"])

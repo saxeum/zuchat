@@ -33,7 +33,9 @@ def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
 def test_index(client: TestClient) -> None:
     response = client.get("/")
     assert response.status_code == 200
-    assert response.json() == {"message": "hello world and eat more fish"}
+    assert response.headers["content-type"].startswith("text/html")
+    assert 'href="/models"' in response.text
+    assert 'href="/login"' in response.text  # no session in tests
 
 
 def test_allowlist(monkeypatch: pytest.MonkeyPatch) -> None:
