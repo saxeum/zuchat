@@ -8,6 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from zuchat import deepseek
+from zuchat.auth import current_user
 from zuchat.config import get_settings
 from zuchat.main import api, deepseek_api_key
 
@@ -23,6 +24,7 @@ def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     monkeypatch.setenv("DEEPSEEK_API_KEY", TEST_API_KEY)
     get_settings.cache_clear()
     api.dependency_overrides[deepseek_api_key] = lambda: TEST_API_KEY
+    api.dependency_overrides[current_user] = lambda: {"email": "test@example.com"}
     yield TestClient(api)
     api.dependency_overrides.clear()
     get_settings.cache_clear()
@@ -57,6 +59,18 @@ def test_ready_without_key(client: TestClient, monkeypatch: pytest.MonkeyPatch) 
     get_settings.cache_clear()
     response = client.get("/ready")
     assert response.status_code == 503
+
+
+def test_chat_requires_login(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DEEPSEEK_API_KEY", TEST_API_KEY)
+    get_settings.cache_clear()
+    api.dependency_overrides.pop(current_user, None)
+    try:
+        response = TestClient(api).post("/chat", json={"message": "hi"})
+        assert response.status_code == 401
+    finally:
+        api.dependency_overrides[current_user] = lambda: {"email": "test@example.com"}
+        get_settings.cache_clear()
 
 
 def test_models_uses_configured_key(

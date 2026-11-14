@@ -47,6 +47,33 @@ make down
 | `GET /models` | DeepSeek model list |
 | `POST /chat` | `{"message": "..."}` → `{"reply": "..."}` |
 
+## Authentication
+
+`/chat` requires a Google account. Everything else stays public.
+
+```bash
+cat > ~/.config/zuchat/google-oauth.env <<'EOF'
+GOOGLE_CLIENT_ID=...apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=...
+SESSION_SECRET=<openssl rand -base64 32>
+ALLOWED_EMAILS=you@gmail.com
+APP_BASE_URL=http://localhost:8000
+EOF
+chmod 600 ~/.config/zuchat/google-oauth.env
+```
+
+Register the redirect URI in the Google console:
+
+| Where the app runs | Authorised redirect URI |
+| --- | --- |
+| `make dev` (:8000) | `http://localhost:8000/auth` |
+| container (:8001) | `http://localhost:8001/auth` |
+
+Then open <http://localhost:8000/login>, sign in, and `/chat` accepts the
+session cookie. `ALLOWED_EMAILS` is the lock: leave it empty and *any* Google
+account can spend your DeepSeek credits; set it to your address and everyone
+else gets 403. `/logout` clears the session.
+
 ## Notes
 
 - The key is an environment variable inside the container: `DEEPSEEK_API_KEY`.

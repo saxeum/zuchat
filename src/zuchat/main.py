@@ -3,10 +3,13 @@ from contextlib import asynccontextmanager
 from typing import Annotated
 
 import uvicorn
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from pydantic import BaseModel, ValidationError
+from starlette.middleware.sessions import SessionMiddleware
+from starlette.responses import RedirectResponse
 
 from zuchat import deepseek
+from zuchat.auth import app_base_url, current_user, is_allowed, oauth, session_secret
 from zuchat.config import Settings, get_settings
 
 
@@ -18,6 +21,36 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 
 api = FastAPI(title="Zuchat", version="0.1.0", lifespan=lifespan)
+api.add_middleware(
+    SessionMiddleware,
+    secret_key=session_secret(),
+    same_site="lax",
+    https_only=app_base_url().startswith("https"),
+)
+
+
+@api.get("/login", tags=["auth"])
+async def login(request: Request) -> RedirectResponse:
+    """Send the browser to Google's consent screen."""
+    return await oauth.google.authorize_redirect(request, str(request.url_for("auth")))
+
+
+@api.get("/auth", name="auth", tags=["auth"])
+async def auth(request: Request) -> RedirectResponse:
+    """OAuth callback: verify, allowlist, then store the user in the session."""
+    token = await oauth.google.authorize_access_token(request)
+    user = token.get("userinfo") or {}
+    email = user.get("email")
+    if not is_allowed(email):
+        raise HTTPException(status_code=403, detail="account not allowed")
+    request.session["user"] = {"email": email, "name": user.get("name", "")}
+    return RedirectResponse("/")
+
+
+@api.get("/logout", tags=["auth"])
+def logout(request: Request) -> RedirectResponse:
+    request.session.clear()
+    return RedirectResponse("/")
 
 
 def deepseek_api_key(
@@ -75,6 +108,7 @@ def get_models(
 def chat(
     request: ChatRequest,
     api_key: Annotated[str, Depends(deepseek_api_key)],
+    _user: Annotated[dict[str, str], Depends(current_user)],
 ) -> dict[str, str]:
     reply = deepseek.chat(api_key, request.message)
     return {"reply": reply}

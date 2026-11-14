@@ -2,6 +2,9 @@
 
 # The one bootstrap input: your DeepSeek key, outside the repo.
 KEY_FILE ?= $(HOME)/.config/zuchat/deepseek.token
+GOOGLE_ENV ?= $(HOME)/.config/zuchat/google-oauth.env
+-include $(GOOGLE_ENV)
+export GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET SESSION_SECRET ALLOWED_EMAILS APP_BASE_URL
 DEEPSEEK_API_KEY ?= $(shell cat $(KEY_FILE) 2>/dev/null)
 export DEEPSEEK_API_KEY
 
