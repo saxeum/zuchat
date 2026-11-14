@@ -23,7 +23,9 @@ function link(href, text) {
 
 async function whoAmI() {
   const response = await fetch("/me");
-  form.hidden = !response.ok; // no composer unless a session exists
+  // Nothing chat-related renders without a session: no empty transcript, no box.
+  form.hidden = !response.ok;
+  logEl.hidden = !response.ok;
   if (!response.ok) {
     statusEl.textContent = "signed out · ";
     statusEl.append(link("/login", "sign in"));
