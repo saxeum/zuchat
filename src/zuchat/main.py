@@ -1,8 +1,10 @@
+import os
 from collections.abc import AsyncIterator  # noqa: TC003 - evaluated at runtime
 from contextlib import asynccontextmanager
 from typing import Annotated
 
 import uvicorn
+from authlib.integrations.base_client.errors import MismatchingStateError
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from pydantic import BaseModel, ValidationError
 from starlette.middleware.sessions import SessionMiddleware
@@ -37,14 +39,28 @@ async def login(request: Request) -> RedirectResponse:
     Google compares it character-for-character, and 127.0.0.1 vs localhost is
     the most common way that comparison fails.
     """
-    redirect_uri = f"{app_base_url().rstrip('/')}/auth"
-    return await oauth.google.authorize_redirect(request, redirect_uri)
+    base = app_base_url().rstrip("/")
+    # Canonicalise the origin first. The OAuth state lives in the session
+    # cookie, which is scoped to the host the browser used; the callback goes to
+    # redirect_uri's host. If those differ (127.0.0.1 vs localhost), the state is
+    # never sent back and authlib raises MismatchingStateError.
+    if str(request.base_url).rstrip("/") != base:
+        return RedirectResponse(f"{base}/login", status_code=302)
+    if not os.environ.get("SESSION_SECRET"):
+        raise HTTPException(status_code=500, detail="SESSION_SECRET is not set")
+    return await oauth.google.authorize_redirect(request, f"{base}/auth")
 
 
 @api.get("/auth", name="auth", tags=["auth"])
 async def auth(request: Request) -> RedirectResponse:
     """OAuth callback: verify, allowlist, then store the user in the session."""
-    token = await oauth.google.authorize_access_token(request)
+    try:
+        token = await oauth.google.authorize_access_token(request)
+    except MismatchingStateError:
+        # Stale/absent session (wrong host, secret rotated, expired cookie):
+        # start over instead of showing a 500.
+        request.session.clear()
+        return RedirectResponse("/login")
     user = token.get("userinfo") or {}
     email = user.get("email")
     if not is_allowed(email):

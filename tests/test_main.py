@@ -46,6 +46,15 @@ def test_allowlist(monkeypatch: pytest.MonkeyPatch) -> None:
     assert not is_allowed(None)
 
 
+def test_login_redirects_to_canonical_origin(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("APP_BASE_URL", "http://canonical.example")
+    monkeypatch.setenv("SESSION_SECRET", "test-secret")
+    other = TestClient(api, base_url="http://elsewhere.example")
+    response = other.get("/login", follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers["location"] == "http://canonical.example/login"
+
+
 def test_health(client: TestClient) -> None:
     response = client.get("/health")
     assert response.status_code == 200
