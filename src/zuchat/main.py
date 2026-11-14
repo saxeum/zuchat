@@ -50,7 +50,12 @@ async def login(request: Request) -> RedirectResponse:
         return RedirectResponse(f"{base}/login", status_code=302)
     if not os.environ.get("SESSION_SECRET"):
         raise HTTPException(status_code=500, detail="SESSION_SECRET is not set")
-    return await oauth.google.authorize_redirect(request, f"{base}/auth")
+    # Always show the account chooser. Without it Google silently reuses the
+    # last account (prompt=none), so a rejected user is bounced back into the
+    # same 403 loop instead of being offered another account.
+    return await oauth.google.authorize_redirect(
+        request, f"{base}/auth", prompt="select_account",
+    )
 
 
 @api.get("/auth", name="auth", tags=["auth"])
@@ -66,7 +71,16 @@ async def auth(request: Request) -> RedirectResponse:
     user = token.get("userinfo") or {}
     email = user.get("email")
     if not is_allowed(email):
-        raise HTTPException(status_code=403, detail="account not allowed")
+        request.session.clear()
+        return HTMLResponse(
+            f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
+<title>not allowed</title></head><body style="font-family:system-ui;margin:3rem">
+<h1>Account not allowed</h1>
+<p>{html.escape(email or "That account")} is not on the allowlist.</p>
+<p><a href="/login">Sign in with a different account</a></p>
+</body></html>""",
+            status_code=403,
+        )
     request.session["user"] = {"email": email, "name": user.get("name", "")}
     return RedirectResponse("/")
 

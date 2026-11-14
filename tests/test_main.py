@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from zuchat import deepseek
-from zuchat.auth import current_user, is_allowed
+from zuchat.auth import current_user, is_allowed, oauth
 from zuchat.config import get_settings
 from zuchat.main import api, deepseek_api_key
 
@@ -55,6 +55,24 @@ def test_login_redirects_to_canonical_origin(monkeypatch: pytest.MonkeyPatch) ->
     response = other.get("/login", follow_redirects=False)
     assert response.status_code == 302
     assert response.headers["location"] == "http://canonical.example/login"
+
+
+def test_disallowed_account_gets_a_page_and_no_session(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ALLOWED_EMAILS", "allowed@example.com")
+    monkeypatch.setenv("SESSION_SECRET", "test-secret")
+
+    async def fake_token(_request: object) -> dict[str, object]:
+        return {"userinfo": {"email": "other@example.com", "name": "Other"}}
+
+    monkeypatch.setattr(oauth.google, "authorize_access_token", fake_token)
+
+    response = TestClient(api).get("/auth?state=x&code=y", follow_redirects=False)
+
+    assert response.status_code == 403
+    assert "not allowed" in response.text.lower()
+    assert 'href="/login"' in response.text
 
 
 def test_health(client: TestClient) -> None:
