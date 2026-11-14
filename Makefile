@@ -18,7 +18,7 @@ MSG ?= hello
 LOCAL_URL ?= http://127.0.0.1:8000
 DOCKER_URL ?= http://127.0.0.1:8001
 
-.PHONY: help test lint up down image ecr-login push dev oauth-status chat smoke chat-local smoke-local \
+.PHONY: help test lint up down image ecr-login push ecs-plan deploy dev oauth-status chat smoke chat-local smoke-local \
         tf-init tf-plan tf-apply tf-fmt github-remote
 
 help: ## Show this help
@@ -42,6 +42,14 @@ DOCKER_CFG ?= $(CURDIR)/.docker-ecr
 
 image: ## Build the app image
 	docker build -t zuchat .
+
+ECS_DIR ?= terraform/ecs
+
+ecs-plan: ## Plan the ECS stack for the current commit
+	terraform -chdir=$(ECS_DIR) plan -var image_tag=$(IMAGE_TAG)
+
+deploy: push ## Push the image and roll ECS to this commit (asks for confirmation)
+	terraform -chdir=$(ECS_DIR) apply -var image_tag=$(IMAGE_TAG)
 
 ecr-login: ## Log docker in to ECR
 	@test -n "$(ECR_REPO)" || { echo "error: no ECR repo - run 'terraform -chdir=terraform/ecs apply' first" >&2; exit 1; }
