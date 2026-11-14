@@ -1,6 +1,7 @@
 """Sign-in, callback, and sign-out."""
 
 import os
+from urllib.parse import urlsplit
 
 from authlib.integrations.base_client.errors import MismatchingStateError
 from fastapi import APIRouter, HTTPException, Request
@@ -16,9 +17,12 @@ router = APIRouter(tags=["auth"])
 async def login(request: Request) -> RedirectResponse:
     """Send the browser to Google's account chooser."""
     base = app_base_url().rstrip("/")
-    # Canonicalise first: the OAuth state lives in a cookie scoped to the host
-    # the browser used, and the callback arrives at redirect_uri's host.
-    if str(request.base_url).rstrip("/") != base:
+    # Canonicalise the HOST only. Behind the ALB the request arrives as http
+    # (TLS terminated upstream), so comparing schemes redirects https -> https
+    # forever. The scheme is decided by APP_BASE_URL, not by the request.
+    want = urlsplit(base)
+    have = request.url
+    if (have.hostname, have.port) != (want.hostname, want.port):
         return RedirectResponse(f"{base}/login", status_code=302)
     if not os.environ.get("SESSION_SECRET"):
         raise HTTPException(status_code=500, detail="SESSION_SECRET is not set")
