@@ -1,4 +1,4 @@
-"""Scratch: what does the openai library give us against DeepSeek? Not used by the app."""
+"""Scratch: what the openai library gives us against DeepSeek."""
 
 import os
 import time
@@ -10,7 +10,9 @@ key = os.environ.get("DEEPSEEK_API_KEY") or (
     Path.home() / ".config" / "zuchat" / "deepseek.token"
 ).read_text().strip()
 
-client = OpenAI(api_key=key, base_url="https://api.deepseek.com", timeout=30, max_retries=0)
+client = OpenAI(
+    api_key=key, base_url="https://api.deepseek.com", timeout=30, max_retries=0
+)
 
 try:
     print("models:", [m.id for m in client.models.list().data])
@@ -36,4 +38,5 @@ for chunk in client.chat.completions.create(
     if delta and first is None:
         first = time.monotonic() - start
     text += delta
-print(f"stream: first_token={first:.2f}s total={time.monotonic() - start:.2f}s text={text[:40]!r}")
+elapsed = time.monotonic() - start
+print(f"stream: first_token={first:.2f}s total={elapsed:.2f}s text={text[:40]!r}")
