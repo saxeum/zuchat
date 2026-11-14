@@ -6,37 +6,9 @@ variable "github_environment" {
   default     = "production"
 }
 
-locals {
-  state_bucket = "zuchat-tfstate-${data.aws_caller_identity.current.account_id}"
-  account      = data.aws_caller_identity.current.account_id
-}
-
-data "aws_iam_policy_document" "tf_apply_assume" {
-  statement {
-    actions = ["sts:AssumeRoleWithWebIdentity"]
-
-    principals {
-      type        = "Federated"
-      identifiers = [aws_iam_openid_connect_provider.github.arn]
-    }
-
-    condition {
-      test     = "StringEquals"
-      variable = "token.actions.githubusercontent.com:aud"
-      values   = ["sts.amazonaws.com"]
-    }
-
-    condition {
-      test     = "StringEquals"
-      variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${local.github_repo}:environment:${var.github_environment}"]
-    }
-  }
-}
-
 resource "aws_iam_role" "tf_apply" {
   name                 = "${var.name}-tf-apply-${var.github_environment}"
-  assume_role_policy   = data.aws_iam_policy_document.tf_apply_assume.json
+  assume_role_policy   = data.aws_iam_policy_document.github_trust["apply"].json
   max_session_duration = 3600
   permissions_boundary = aws_iam_policy.tf_apply_boundary.arn
 }
