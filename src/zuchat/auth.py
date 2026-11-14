@@ -57,5 +57,7 @@ def current_user(request: Request) -> dict[str, str]:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="login required: open /login",
+            # RFC 9110: a 401 must carry a challenge.
+            headers={"WWW-Authenticate": 'Cookie realm="zuchat"'},
         )
     return user
