@@ -13,8 +13,6 @@ module "ecs" {
       cpu    = 512
       memory = 1024
 
-      execution_role_arn = aws_iam_role.execution.arn
-
       container_definitions = {
         app = {
           image     = "${aws_ecr_repository.app.repository_url}:${var.image_tag}"
