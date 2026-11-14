@@ -3,7 +3,6 @@ const statusEl = document.getElementById("status");
 const logEl = document.getElementById("log");
 const form = document.getElementById("composer");
 const input = document.getElementById("message");
-const send = form.querySelector("button");
 
 // textContent, never innerHTML: replies are untrusted.
 function line(kind, text) {
@@ -51,14 +50,12 @@ form.addEventListener("submit", async (event) => {
 
   line("you", message);
   input.value = "";
-  send.disabled = true;
 
   const response = await fetch("/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message }),
   });
-  send.disabled = false;
   input.focus();
 
   if (response.ok) {
