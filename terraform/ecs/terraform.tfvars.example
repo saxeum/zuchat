@@ -7,4 +7,4 @@ session_secret_arn       = "arn:aws:secretsmanager:ap-southeast-2:ACCOUNT:secret
 google_client_secret_arn = "arn:aws:secretsmanager:ap-southeast-2:ACCOUNT:secret:zuchat/google-secret-XXXXXX"
 
 google_client_id = "000000000000-xxxxxxxx.apps.googleusercontent.com"
-allowed_emails   = "datafabricz@gmail.com"
+allowed_emails   = "you@example.com"
