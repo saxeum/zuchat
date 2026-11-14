@@ -4,9 +4,10 @@ import os
 
 from authlib.integrations.base_client.errors import MismatchingStateError
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import RedirectResponse, Response
 
 from zuchat.auth import app_base_url, is_allowed, oauth
+from zuchat.pages import denied
 
 router = APIRouter(tags=["auth"])
 
@@ -40,15 +41,7 @@ async def auth(request: Request) -> Response:
     email = user.get("email")
     if not is_allowed(email):
         request.session.clear()
-        return HTMLResponse(
-            f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
-<title>not allowed</title></head><body style="font-family:system-ui;margin:3rem">
-<h1>Account not allowed</h1>
-<p>{email or "That account"} is not on the allowlist.</p>
-<p><a href="/login">Sign in with a different account</a></p>
-</body></html>""",
-            status_code=403,
-        )
+        return denied(email)
 
     request.session["user"] = {"email": email, "name": user.get("name", "")}
     return RedirectResponse("/")
