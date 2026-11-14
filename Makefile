@@ -32,7 +32,7 @@ down: ## Stop the container
 	docker compose down
 
 AWS_REGION ?= ap-southeast-2
-IMAGE_TAG ?= $(shell git rev-parse --short HEAD)
+IMAGE_TAG ?= $(shell git rev-parse HEAD)
 # Comes from the ECS stack; empty until `terraform -chdir=terraform/ecs apply` runs.
 ECR_REPO ?= $(shell terraform -chdir=terraform/ecs output -raw ecr_repository_url 2>/dev/null)
 ECR_REGISTRY = $(firstword $(subst /, ,$(ECR_REPO)))
