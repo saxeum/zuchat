@@ -37,7 +37,8 @@ lint: ## Lint the source and tests
 	uv run ruff check src tests
 
 dev: ## Run the app locally on :8000 with auto-reload
-	DEEPSEEK_API_KEY="$(DEEPSEEK_API_KEY)" uv run fastapi dev src/zuchat/main.py
+	@test -n "$$DEEPSEEK_API_KEY" || { echo "error: no key - check ~/.config/zuchat/deepseek.token" >&2; exit 1; }
+	@uv run fastapi dev src/zuchat/main.py
 
 oauth-status: ## Show whether the Google OAuth config is loaded (masked)
 	@echo "client_id     $$(printf %s '$(GOOGLE_CLIENT_ID)' | cut -c1-12)... ($(shell printf %s '$(GOOGLE_CLIENT_ID)' | wc -c) chars)"
