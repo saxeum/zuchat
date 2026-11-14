@@ -10,7 +10,8 @@ from fastapi.testclient import TestClient
 from zuchat import deepseek
 from zuchat.auth import current_user, is_allowed, oauth
 from zuchat.config import get_settings
-from zuchat.main import api, deepseek_api_key
+from zuchat.deps import deepseek_api_key
+from zuchat.main import api
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -34,8 +35,17 @@ def test_index(client: TestClient) -> None:
     response = client.get("/")
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/html")
-    assert 'href="/models"' in response.text
-    assert 'href="/login"' in response.text  # no session in tests
+    assert 'id="composer"' in response.text
+    assert "/static/app.js" in response.text
+
+
+def test_me_requires_login() -> None:
+    api.dependency_overrides.pop(current_user, None)
+    assert TestClient(api).get("/me").status_code == 401
+
+
+def test_me_returns_user(client: TestClient) -> None:
+    assert client.get("/me").json() == {"email": "test@example.com"}
 
 
 def test_allowlist(monkeypatch: pytest.MonkeyPatch) -> None:
