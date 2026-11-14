@@ -73,19 +73,15 @@ resource "aws_lb_listener" "http" {
   protocol          = "HTTP"
 
   # With no certificate yet, serve over HTTP; once one exists, redirect.
-  dynamic "default_action" {
-    for_each = var.enable_https ? [] : [1]
-    content {
-      type             = "forward"
-      target_group_arn = aws_lb_target_group.app.arn
-    }
-  }
+  # One action, chosen by enable_https: forward while bootstrapping, redirect
+  # once TLS exists.
+  default_action {
+    type             = var.enable_https ? "redirect" : "forward"
+    target_group_arn = var.enable_https ? null : aws_lb_target_group.app.arn
 
-  dynamic "default_action" {
-    for_each = var.enable_https ? [1] : []
-    content {
-      type = "redirect"
-      redirect {
+    dynamic "redirect" {
+      for_each = var.enable_https ? [1] : []
+      content {
         port        = "443"
         protocol    = "HTTPS"
         status_code = "HTTP_301"
@@ -97,14 +93,6 @@ resource "aws_lb_listener" "http" {
 resource "aws_lb_listener" "https" {
   count = var.enable_https ? 1 : 0
 
-  # The footgun: certificate_arn="" used to mean "delete TLS". Now it is
-  # required, and turning TLS off is an explicit, separate decision.
-  lifecycle {
-    precondition {
-      condition     = var.certificate_arn != ""
-      error_message = "certificate_arn is required when enable_https is true."
-    }
-  }
 
   load_balancer_arn = aws_lb.app.arn
   port              = 443

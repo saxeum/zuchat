@@ -161,17 +161,17 @@ output "tf_apply_role_arn" {
 
 # Terraform takes a lock by writing this object, so a plan needs write on the
 # lock and nothing else. ReadOnlyAccess still governs the state itself.
-data "aws_iam_policy_document" "tf_plan_lock" {
-  statement {
-    actions   = ["s3:PutObject", "s3:DeleteObject"]
-    resources = ["arn:aws:s3:::${local.state_bucket}/ecs/terraform.tfstate.tflock"]
-  }
-}
-
 resource "aws_iam_role_policy" "tf_plan_lock" {
-  name   = "state-lock"
-  role   = aws_iam_role.tf_plan.id
-  policy = data.aws_iam_policy_document.tf_plan_lock.json
+  name = "state-lock"
+  role = aws_iam_role.tf_plan.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["s3:PutObject", "s3:DeleteObject"]
+      Resource = "arn:aws:s3:::${local.state_bucket}/ecs/terraform.tfstate.tflock"
+    }]
+  })
 }
 
 # Separate statement so it cannot be lost in a larger policy edit.
