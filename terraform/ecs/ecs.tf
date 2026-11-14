@@ -11,6 +11,9 @@ module "ecs" {
   services = {
     (var.name) = {
       cpu    = 512
+      # The module would otherwise create its own execution role and ignore ours.
+      create_task_exec_iam_role = false
+      execution_role_arn        = aws_iam_role.execution.arn
       memory = 1024
 
       container_definitions = {

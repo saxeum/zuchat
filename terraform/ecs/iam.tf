@@ -1,6 +1,27 @@
-# The ECS module creates the execution role (it needs it for ECR and logs), so
-# attach the secrets permission to *that* role rather than creating a second one
-# that the service never assumes.
+# We own the execution role: the module's per-service role cannot be referenced
+# from here (its output lives in the service submodule), and passing
+# execution_role_arn alone is ignored unless creation is disabled.
+data "aws_iam_policy_document" "assume" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "Service"
+      identifiers = ["ecs-tasks.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "execution" {
+  name               = "${var.name}-execution"
+  assume_role_policy = data.aws_iam_policy_document.assume.json
+}
+
+# ECR pull + CloudWatch logs.
+resource "aws_iam_role_policy_attachment" "execution" {
+  role       = aws_iam_role.execution.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
 data "aws_iam_policy_document" "secrets" {
   statement {
     actions = ["secretsmanager:GetSecretValue"]
@@ -14,6 +35,6 @@ data "aws_iam_policy_document" "secrets" {
 
 resource "aws_iam_role_policy" "secrets" {
   name   = "read-secrets"
-  role   = module.ecs.task_exec_iam_role_name
+  role   = aws_iam_role.execution.id
   policy = data.aws_iam_policy_document.secrets.json
 }
