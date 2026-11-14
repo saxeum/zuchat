@@ -11,7 +11,7 @@ key = os.environ.get("DEEPSEEK_API_KEY") or (
 ).read_text().strip()
 
 client = OpenAI(
-    api_key=key, base_url="https://api.deepseek.com", timeout=30, max_retries=0
+    api_key=key, base_url="https://api.deepseek.com", timeout=30, max_retries=0,
 )
 
 try:
