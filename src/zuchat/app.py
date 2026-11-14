@@ -5,10 +5,11 @@ from collections.abc import AsyncIterator  # noqa: TC003 - evaluated at runtime
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.staticfiles import StaticFiles
 
-from zuchat import api_routes, auth_routes, ops_routes, pages
+from zuchat import api_routes, auth_routes, ops_routes, pages, ratelimit
 from zuchat.auth import app_base_url, session_secret
 from zuchat.config import get_settings
 
@@ -37,6 +38,7 @@ def create_app() -> FastAPI:
     )
     app.add_middleware(
         SessionMiddleware,
+        max_age=8 * 3600,
         secret_key=session_secret(),
         same_site="lax",
         https_only=app_base_url().startswith("https"),
@@ -66,6 +68,19 @@ def create_app() -> FastAPI:
                 "Strict-Transport-Security", "max-age=31536000; includeSubDomains",
             )
         return response
+
+    @app.middleware("http")
+    async def rate_limit(request: Request, call_next):  # noqa: ANN001, ANN202
+        if request.method == "POST" and request.url.path == "/api/chat":
+            forwarded = request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+            client = forwarded or (request.client.host if request.client else "unknown")
+            if not ratelimit.allow(client):
+                return JSONResponse(
+                    {"detail": "Too many messages, slow down."},
+                    status_code=429,
+                    headers={"Retry-After": "60"},
+                )
+        return await call_next(request)
 
     return app
 

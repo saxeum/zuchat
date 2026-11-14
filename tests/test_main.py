@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import pytest
 from fastapi.testclient import TestClient
 
-from zuchat import deepseek
+from zuchat import deepseek, ratelimit
 from zuchat.app import create_app
 from zuchat.auth import current_user, is_allowed, oauth
 from zuchat.config import get_settings
@@ -209,3 +209,14 @@ def test_docs_disabled_when_asked(monkeypatch: pytest.MonkeyPatch) -> None:
     with TestClient(create_app()) as fresh:
         assert fresh.get("/docs").status_code == 404
         assert fresh.get("/openapi.json").status_code == 404
+
+
+def test_chat_is_rate_limited(client: TestClient) -> None:
+    headers = {"x-forwarded-for": "10.9.9.9"}
+    codes = [
+        client.post("/api/chat", json={"message": "hello"}, headers=headers).status_code
+        for _ in range(ratelimit.LIMIT + 1)
+    ]
+
+    assert codes[-1] == 429
+    assert codes[:-1] == [200] * ratelimit.LIMIT
