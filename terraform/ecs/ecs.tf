@@ -13,8 +13,6 @@ module "ecs" {
       cpu    = 512
       memory = 1024
 
-      execution_role_arn = aws_iam_role.execution.arn
-
       container_definitions = {
         app = {
           image     = "${aws_ecr_repository.app.repository_url}:${var.image_tag}"
@@ -51,6 +49,9 @@ module "ecs" {
       assign_public_ip   = true
       subnet_ids         = module.vpc.public_subnets
       security_group_ids = [aws_security_group.service.id]
+      # The module otherwise attaches its own SG too; two SGs, one with no
+      # egress, makes connectivity failures ambiguous. One SG, ours.
+      create_security_group = false
     }
   }
 }
