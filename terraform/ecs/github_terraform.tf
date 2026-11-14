@@ -16,10 +16,13 @@ data "aws_iam_policy_document" "tf_plan_assume" {
       values   = ["sts.amazonaws.com"]
     }
 
+    # Any ref in this repository. The role is ReadOnlyAccess, so the breadth
+    # costs nothing: a plan cannot change infrastructure. The apply role is the
+    # one that pins environment + reviewers.
     condition {
-      test     = "StringEquals"
+      test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${local.github_repo}:pull_request"]
+      values   = ["repo:${local.github_repo}:*"]
     }
   }
 }
