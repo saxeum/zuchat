@@ -41,7 +41,7 @@ async def auth(request: Request) -> Response:
     email = user.get("email")
     if not is_allowed(email):
         request.session.clear()
-        return denied(email)
+        return denied()
 
     request.session["user"] = {"email": email, "name": user.get("name", "")}
     return RedirectResponse("/")
