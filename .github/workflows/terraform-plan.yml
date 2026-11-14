@@ -3,6 +3,12 @@ name: terraform-plan
 # Plan only, on pull requests, with credentials that cannot write.
 on: pull_request
 
+# Same group as terraform-apply: plan and apply both take the S3 state lock,
+# so they must queue behind each other, not race.
+concurrency:
+  group: terraform-state
+  cancel-in-progress: false
+
 permissions:
   id-token: write
   contents: read

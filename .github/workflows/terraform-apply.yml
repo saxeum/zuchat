@@ -9,7 +9,7 @@ on:
 # One apply at a time. Two merges close together used to race for the S3 lock
 # and one of them failed with a spurious "Error acquiring the state lock".
 concurrency:
-  group: terraform-apply
+  group: terraform-state
   cancel-in-progress: false
 
 permissions:
