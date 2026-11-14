@@ -39,3 +39,5 @@ ignore = ["D100", "D101", "D103", "CPY001"]
 [tool.ruff.lint.per-file-ignores]
 # Tests use bare asserts and HTTP status codes as literals by convention.
 "tests/**" = ["S101", "PLR2004"]
+# CLI helpers: printing is the interface, and they are scripts, not a package.
+"scripts/*.py" = ["T201", "INP001"]

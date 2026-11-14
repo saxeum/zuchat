@@ -51,16 +51,18 @@ make down
 
 `/chat` requires a Google account. Everything else stays public.
 
+Download the OAuth client JSON from the Google console (**Credentials → your
+client → Download JSON**) and put it here:
+
 ```bash
-cat > ~/.config/zuchat/google-oauth.env <<'EOF'
-GOOGLE_CLIENT_ID=...apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=...
-SESSION_SECRET=<openssl rand -base64 32>
-ALLOWED_EMAILS=you@gmail.com
-APP_BASE_URL=http://localhost:8000
-EOF
-chmod 600 ~/.config/zuchat/google-oauth.env
+mv ~/Downloads/client_secret_*.json ~/.config/zuchat/google-oauth.json
+openssl rand -base64 32 > ~/.config/zuchat/session-secret
+chmod 600 ~/.config/zuchat/google-oauth.json ~/.config/zuchat/session-secret
+make oauth-status      # masked confirmation
 ```
+
+The Makefile extracts `client_id`/`client_secret` from the JSON. `ALLOWED_EMAILS`
+and `APP_BASE_URL` are optional overrides (environment or the same shell).
 
 Register the redirect URI in the Google console:
 

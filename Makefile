@@ -2,8 +2,10 @@
 
 # The one bootstrap input: your DeepSeek key, outside the repo.
 KEY_FILE ?= $(HOME)/.config/zuchat/deepseek.token
-GOOGLE_ENV ?= $(HOME)/.config/zuchat/google-oauth.env
--include $(GOOGLE_ENV)
+OAUTH_JSON ?= $(HOME)/.config/zuchat/google-oauth.json
+SESSION_SECRET ?= $(shell cat $(HOME)/.config/zuchat/session-secret 2>/dev/null)
+GOOGLE_CLIENT_ID ?= $(shell python3 scripts/google_client.py id $(OAUTH_JSON) 2>/dev/null)
+GOOGLE_CLIENT_SECRET ?= $(shell python3 scripts/google_client.py secret $(OAUTH_JSON) 2>/dev/null)
 export GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET SESSION_SECRET ALLOWED_EMAILS APP_BASE_URL
 DEEPSEEK_API_KEY ?= $(shell cat $(KEY_FILE) 2>/dev/null)
 export DEEPSEEK_API_KEY
@@ -12,7 +14,7 @@ MSG ?= hello
 LOCAL_URL ?= http://127.0.0.1:8000
 DOCKER_URL ?= http://127.0.0.1:8001
 
-.PHONY: help test lint up down image dev chat smoke chat-local smoke-local \
+.PHONY: help test lint up down image dev oauth-status chat smoke chat-local smoke-local \
         tf-init tf-plan tf-apply tf-fmt github-remote
 
 help: ## Show this help
@@ -36,6 +38,11 @@ lint: ## Lint the source and tests
 
 dev: ## Run the app locally on :8000 with auto-reload
 	DEEPSEEK_API_KEY="$(DEEPSEEK_API_KEY)" uv run fastapi dev src/zuchat/main.py
+
+oauth-status: ## Show whether the Google OAuth config is loaded (masked)
+	@echo "client_id     $$(printf %s '$(GOOGLE_CLIENT_ID)' | cut -c1-12)... ($(shell printf %s '$(GOOGLE_CLIENT_ID)' | wc -c) chars)"
+	@echo "client_secret $$(test -n '$(GOOGLE_CLIENT_SECRET)' && echo set || echo MISSING)"
+	@echo "session       $$(test -n '$(SESSION_SECRET)' && echo set || echo 'MISSING (cookies reset each boot)')"
 
 chat: ## Chat with the CONTAINER (default, :8001)
 	@APP_URL=$(DOCKER_URL) ./scripts/chat.sh "$(MSG)"

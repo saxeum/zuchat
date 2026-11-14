@@ -43,18 +43,26 @@ console steps are identical, only the callback path differs.
 
 ## 4. Wire the values in
 
+Download the client JSON from the console (**Credentials → your client → Download
+JSON**) and save it as `~/.config/zuchat/google-oauth.json` (`chmod 600`). The
+Makefile reads `client_id` and `client_secret` straight out of it:
+
 ```bash
-cat > ~/.config/zuchat/google-oauth.env <<'ENV'
-GOOGLE_CLIENT_ID=....apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=...
-SESSION_SECRET=<openssl rand -base64 32>
-ALLOWED_EMAILS=you@gmail.com
-APP_BASE_URL=http://localhost:8000
-ENV
-chmod 600 ~/.config/zuchat/google-oauth.env
+mv ~/Downloads/client_secret_*.json ~/.config/zuchat/google-oauth.json
+chmod 600 ~/.config/zuchat/google-oauth.json
+
+openssl rand -base64 32 > ~/.config/zuchat/session-secret
+chmod 600 ~/.config/zuchat/session-secret
 ```
 
-The Makefile loads this file. Naming differs from numbat only in the app's own
+Optional overrides (environment, or the same file names):
+
+| Variable | Default |
+| --- | --- |
+| `ALLOWED_EMAILS` | empty = any Google account |
+| `APP_BASE_URL` | `http://localhost:8000` |
+
+Check what was picked up without printing secrets: `make oauth-status`. Naming differs from numbat only in the app's own
 variables:
 
 | numbat | zuchat |
