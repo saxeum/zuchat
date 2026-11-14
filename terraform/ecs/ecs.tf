@@ -4,6 +4,10 @@ module "ecs" {
 
   cluster_name = var.name
 
+  # A target group must be attached to a listener before ECS will accept it,
+  # and the service is created inside this module - so wait for the listeners.
+  depends_on = [aws_lb_listener.http, aws_lb_listener.https]
+
   services = {
     (var.name) = {
       cpu    = 512
