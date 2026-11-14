@@ -109,3 +109,18 @@ output "html_url" {
   description = "Where the repository lives."
   value       = github_repository.repo.html_url
 }
+
+# The gate for Terraform apply: only master, only with a human approval.
+resource "github_repository_environment" "production" {
+  repository  = github_repository.this.name
+  environment = "production"
+
+  deployment_branch_policy {
+    protected_branches     = true
+    custom_branch_policies = false
+  }
+
+  reviewers {
+    users = [62874892]
+  }
+}

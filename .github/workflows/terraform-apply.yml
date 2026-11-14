@@ -1,0 +1,62 @@
+name: terraform-apply
+
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [master]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  apply:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    # The OIDC subject is repo:...:environment:production, and this Environment
+    # requires a reviewer, so the approval is part of the credential boundary.
+    environment: production
+    env:
+      AWS_REGION: ap-southeast-2
+      REPO: 619071335809.dkr.ecr.ap-southeast-2.amazonaws.com/zuchat
+      SHA: ${{ github.event.workflow_run.head_sha }}
+      TF_IN_AUTOMATION: "1"
+      TF_INPUT: "0"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::619071335809:role/zuchat-tf-apply-production
+          aws-region: ${{ env.AWS_REGION }}
+          mask-aws-account-id: true
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build and push image
+        run: |
+          aws ecr get-login-password --region "$AWS_REGION" \
+            | docker login --username AWS --password-stdin "${REPO%%/*}"
+          docker build --platform linux/amd64 -t "$REPO:$SHA" -t "$REPO:latest" .
+          docker push "$REPO:$SHA"
+          docker push "$REPO:latest"
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.17.1"
+
+      - name: Apply with the image pinned to this commit
+        working-directory: terraform/ecs
+        env:
+          TF_VAR_deepseek_secret_arn: ${{ vars.DEEPSEEK_SECRET_ARN }}
+          TF_VAR_session_secret_arn: ${{ vars.SESSION_SECRET_ARN }}
+          TF_VAR_google_client_secret_arn: ${{ vars.GOOGLE_CLIENT_SECRET_ARN }}
+          TF_VAR_google_client_id: ${{ vars.GOOGLE_CLIENT_ID }}
+          TF_VAR_allowed_emails: ${{ vars.ALLOWED_EMAILS }}
+          TF_VAR_image_tag: ${{ env.SHA }}
+        run: |
+          terraform init -input=false
+          terraform apply -auto-approve -input=false

@@ -2,7 +2,7 @@
 # in the repository. The role can do exactly two things - push the image and
 # tell the one service to redeploy. Everything else stays manual (make deploy).
 locals {
-  github_repo = "saxeum/zuchat"
+  github_repo     = "saxeum/zuchat"
   ecs_service_arn = "arn:aws:ecs:${var.region}:${data.aws_caller_identity.current.account_id}:service/${var.name}/${var.name}"
 }
 
