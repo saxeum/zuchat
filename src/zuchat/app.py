@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.staticfiles import StaticFiles
 
-from zuchat import api_routes, auth_routes, pages
+from zuchat import api_routes, auth_routes, ops_routes, pages
 from zuchat.auth import app_base_url, session_secret
 from zuchat.config import get_settings
 
@@ -30,6 +30,7 @@ def create_app() -> FastAPI:
     app.mount("/static", StaticFiles(directory=pages.STATIC_DIR), name="static")
     app.include_router(pages.router)
     app.include_router(auth_routes.router)
+    app.include_router(ops_routes.router)
     app.include_router(api_routes.router)
     return app
 

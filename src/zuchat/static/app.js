@@ -21,7 +21,7 @@ function link(href, text) {
 }
 
 async function whoAmI() {
-  const response = await fetch("/me");
+  const response = await fetch("/api/me");
   // Nothing chat-related renders without a session: no empty transcript, no box.
   form.hidden = !response.ok;
   logEl.hidden = !response.ok;
@@ -51,7 +51,7 @@ form.addEventListener("submit", async (event) => {
   line("you", message);
   input.value = "";
 
-  const response = await fetch("/chat", {
+  const response = await fetch("/api/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message }),

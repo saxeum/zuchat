@@ -41,11 +41,11 @@ def test_index(client: TestClient) -> None:
 
 def test_me_requires_login() -> None:
     api.dependency_overrides.pop(current_user, None)
-    assert TestClient(api).get("/me").status_code == 401
+    assert TestClient(api).get("/api/me").status_code == 401
 
 
 def test_me_returns_user(client: TestClient) -> None:
-    assert client.get("/me").json() == {"email": "test@example.com"}
+    assert client.get("/api/me").json() == {"email": "test@example.com"}
 
 
 def test_allowlist(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -115,7 +115,7 @@ def test_chat_requires_login(monkeypatch: pytest.MonkeyPatch) -> None:
     get_settings.cache_clear()
     api.dependency_overrides.pop(current_user, None)
     try:
-        response = TestClient(api).post("/chat", json={"message": "hi"})
+        response = TestClient(api).post("/api/chat", json={"message": "hi"})
         assert response.status_code == 401
     finally:
         api.dependency_overrides[current_user] = lambda: {"email": "test@example.com"}
@@ -127,15 +127,15 @@ def test_models_requires_login(monkeypatch: pytest.MonkeyPatch) -> None:
     get_settings.cache_clear()
     api.dependency_overrides.pop(current_user, None)
     try:
-        assert TestClient(api).get("/models").status_code == 401
+        assert TestClient(api).get("/api/models").status_code == 401
     finally:
         api.dependency_overrides[current_user] = lambda: {"email": "test@example.com"}
         get_settings.cache_clear()
 
 
 def test_chat_rejects_oversized_message(client: TestClient) -> None:
-    assert client.post("/chat", json={"message": "x" * 4001}).status_code == 422
-    assert client.post("/chat", json={"message": ""}).status_code == 422
+    assert client.post("/api/chat", json={"message": "x" * 4001}).status_code == 422
+    assert client.post("/api/chat", json={"message": ""}).status_code == 422
 
 
 def test_models_uses_configured_key(
@@ -150,7 +150,7 @@ def test_models_uses_configured_key(
 
     monkeypatch.setattr(deepseek, "models", fake_models)
 
-    response = client.get("/models")
+    response = client.get("/api/models")
 
     assert response.status_code == 200
     assert response.json() == [{"id": "deepseek-chat"}]
@@ -170,7 +170,7 @@ def test_chat_sends_message_to_api(
 
     monkeypatch.setattr(deepseek, "chat", fake_chat)
 
-    response = client.post("/chat", json={"message": "hello"})
+    response = client.post("/api/chat", json={"message": "hello"})
 
     assert response.status_code == 200
     assert response.json() == {"reply": "hello back"}

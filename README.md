@@ -44,8 +44,8 @@ make down
 | --- | --- |
 | `GET /health` | liveness (ALB target group / ECS container health check) |
 | `GET /ready` | readiness: 503 until the API key is configured |
-| `GET /models` | DeepSeek model list |
-| `POST /chat` | `{"message": "..."}` → `{"reply": "..."}` |
+| `GET /api/models` | DeepSeek model list (auth) |
+| `POST /api/chat` | `{"message": "..."}` → `{"reply": "..."}` (auth) |
 
 ## Authentication
 
