@@ -4,6 +4,10 @@ module "ecs" {
 
   cluster_name = var.name
 
+  # A target group must be attached to a listener before ECS will accept it,
+  # and the service is created inside this module - so wait for the listeners.
+  depends_on = [aws_lb_listener.http, aws_lb_listener.https]
+
   services = {
     (var.name) = {
       cpu    = 512
@@ -42,7 +46,10 @@ module "ecs" {
         }
       }
 
-      subnet_ids       = module.vpc.public_subnets
+      # No NAT gateway in this VPC, so the task needs a public IP to reach
+      # ECR, S3, CloudWatch and Secrets Manager.
+      assign_public_ip   = true
+      subnet_ids         = module.vpc.public_subnets
       security_group_ids = [aws_security_group.service.id]
     }
   }
