@@ -55,6 +55,7 @@ jobs:
           TF_VAR_session_secret_arn: ${{ vars.SESSION_SECRET_ARN || secrets.SESSION_SECRET_ARN }}
           TF_VAR_google_client_secret_arn: ${{ vars.GOOGLE_CLIENT_SECRET_ARN || secrets.GOOGLE_CLIENT_SECRET_ARN }}
           TF_VAR_google_client_id: ${{ vars.GOOGLE_CLIENT_ID || secrets.GOOGLE_CLIENT_ID }}
+          TF_VAR_enable_https: ${{ vars.ENABLE_HTTPS || 'true' }}
           TF_VAR_certificate_arn: ${{ vars.CERTIFICATE_ARN || secrets.CERTIFICATE_ARN }}
           TF_VAR_allowed_emails: ${{ vars.ALLOWED_EMAILS || secrets.ALLOWED_EMAILS }}
           TF_VAR_image_tag: ${{ env.SHA }}

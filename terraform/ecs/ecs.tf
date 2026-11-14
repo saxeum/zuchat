@@ -24,7 +24,7 @@ module "ecs" {
           portMappings = [{ containerPort = 8000, protocol = "tcp" }]
 
           environment = [
-            { name = "APP_BASE_URL", value = "https://${var.domain}" },
+            { name = "APP_BASE_URL", value = "${var.enable_https ? "https" : "http"}://${var.domain}" },
             { name = "GOOGLE_CLIENT_ID", value = var.google_client_id },
             { name = "ALLOWED_EMAILS", value = var.allowed_emails },
             { name = "ENABLE_DOCS", value = "false" },
