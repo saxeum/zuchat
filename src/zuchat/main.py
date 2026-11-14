@@ -72,7 +72,7 @@ class ChatRequest(BaseModel):
 
 @api.get("/")
 def index() -> dict[str, str]:
-    return {"message": "hello world"}
+    return {"message": "hello world and eat more fish"}
 
 
 @api.get("/health", tags=["ops"])

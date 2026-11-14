@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from zuchat import deepseek
-from zuchat.auth import current_user
+from zuchat.auth import current_user, is_allowed
 from zuchat.config import get_settings
 from zuchat.main import api, deepseek_api_key
 
@@ -33,7 +33,17 @@ def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
 def test_index(client: TestClient) -> None:
     response = client.get("/")
     assert response.status_code == 200
-    assert response.json() == {"message": "hello world"}
+    assert response.json() == {"message": "hello world and eat more fish"}
+
+
+def test_allowlist(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ALLOWED_EMAILS", "a@example.com, b@example.com")
+    assert is_allowed("a@example.com")
+    assert is_allowed("B@Example.com")
+    assert not is_allowed("c@example.com")
+    monkeypatch.setenv("ALLOWED_EMAILS", "")
+    assert is_allowed("anyone@example.com")
+    assert not is_allowed(None)
 
 
 def test_health(client: TestClient) -> None:
