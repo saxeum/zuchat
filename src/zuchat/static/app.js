@@ -23,6 +23,7 @@ function link(href, text) {
 
 async function whoAmI() {
   const response = await fetch("/me");
+  form.hidden = !response.ok; // no composer unless a session exists
   if (!response.ok) {
     statusEl.textContent = "signed out · ";
     statusEl.append(link("/login", "sign in"));
