@@ -1,3 +1,68 @@
+# The trust anchor only. Roles and their subjects live in github_access.tf,
+# plan in github_terraform.tf, apply in github_apply.tf.
+resource "aws_iam_openid_connect_provider" "github" {
+  url             = "https://token.actions.githubusercontent.com"
+  client_id_list  = ["sts.amazonaws.com"]
+  thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1"]
+}
+
+# Everything GitHub Actions needs to get into AWS, in one place.
+locals {
+  github_repo  = "saxeum/zuchat"
+  account      = data.aws_caller_identity.current.account_id
+  state_bucket = "zuchat-tfstate-${local.account}"
+
+  # One subject per role. The plan role is read-only, so it may be assumed from
+  # any ref; the apply role's subject *is* the gate, so it stays narrow.
+  github_subjects = {
+    plan  = "repo:${local.github_repo}:*"
+    apply = "repo:${local.github_repo}:environment:${var.github_environment}"
+  }
+}
+
+data "aws_caller_identity" "current" {}
+
+data "aws_iam_policy_document" "github_trust" {
+  for_each = local.github_subjects
+
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.github.arn]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringLike"
+      variable = "token.actions.githubusercontent.com:sub"
+      values   = [each.value]
+    }
+  }
+}
+
+# Read-only role for `terraform plan` on pull requests.
+resource "aws_iam_role" "tf_plan" {
+  name               = "${var.name}-tf-plan"
+  assume_role_policy = data.aws_iam_policy_document.github_trust["plan"].json
+}
+
+# ReadOnlyAccess: broad by design, and read access cannot delete the ALB.
+resource "aws_iam_role_policy_attachment" "tf_plan" {
+  role       = aws_iam_role.tf_plan.name
+  policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
+}
+
+output "tf_plan_role_arn" {
+  value = aws_iam_role.tf_plan.arn
+}
+
 # Apply role for Terraform in Actions. Parameterised by GitHub Environment so
 # each environment gets its own role and its own OIDC subject.
 variable "github_environment" {
