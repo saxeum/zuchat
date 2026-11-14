@@ -175,3 +175,37 @@ def test_chat_sends_message_to_api(
     assert response.status_code == 200
     assert response.json() == {"reply": "hello back"}
     assert seen == {"api_key": TEST_API_KEY, "message": "hello"}
+
+
+def test_security_headers_present(client: TestClient) -> None:
+    headers = client.get("/health").headers
+
+    assert headers["x-content-type-options"] == "nosniff"
+    assert headers["x-frame-options"] == "DENY"
+    assert headers["referrer-policy"] == "no-referrer"
+    assert headers["permissions-policy"] == "geolocation=(), microphone=(), camera=()"
+    assert "default-src 'self'" in headers["content-security-policy"]
+
+
+def test_hsts_only_over_https(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    assert "strict-transport-security" not in client.get("/health").headers
+
+    monkeypatch.setenv("APP_BASE_URL", "https://zuchat.test")
+    assert "strict-transport-security" in client.get("/health").headers
+
+
+def test_docs_serve_by_default(client: TestClient) -> None:
+    assert client.get("/docs").status_code == 200
+
+
+def test_docs_disabled_when_asked(monkeypatch: pytest.MonkeyPatch) -> None:
+    from fastapi.testclient import TestClient as FreshClient
+
+    from zuchat.app import create_app
+
+    monkeypatch.setenv("ENABLE_DOCS", "false")
+    with FreshClient(create_app()) as fresh:
+        assert fresh.get("/docs").status_code == 404
+        assert fresh.get("/openapi.json").status_code == 404
