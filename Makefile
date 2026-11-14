@@ -6,6 +6,8 @@ OAUTH_JSON ?= $(HOME)/.config/zuchat/google-oauth.json
 SESSION_SECRET ?= $(shell cat $(HOME)/.config/zuchat/session-secret 2>/dev/null)
 ALLOWED_EMAILS ?= $(shell cat $(HOME)/.config/zuchat/allowed-emails 2>/dev/null)
 APP_BASE_URL ?= http://localhost:8000
+# The container is reached on :8001, and the OAuth redirect URI must match it.
+DOCKER_BASE_URL ?= http://localhost:8001
 GOOGLE_CLIENT_ID ?= $(shell python3 scripts/google_client.py id $(OAUTH_JSON) 2>/dev/null)
 GOOGLE_CLIENT_SECRET ?= $(shell python3 scripts/google_client.py secret $(OAUTH_JSON) 2>/dev/null)
 export GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET SESSION_SECRET ALLOWED_EMAILS APP_BASE_URL
@@ -24,7 +26,7 @@ help: ## Show this help
 		| awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
 
 up: ## Build and start the app container
-	docker compose up -d --build
+	APP_BASE_URL=$(DOCKER_BASE_URL) docker compose up -d --build
 
 down: ## Stop the container
 	docker compose down
