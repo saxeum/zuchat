@@ -18,7 +18,7 @@ MSG ?= hello
 LOCAL_URL ?= http://127.0.0.1:8000
 DOCKER_URL ?= http://127.0.0.1:8001
 
-.PHONY: help test lint up down image dev oauth-status chat smoke chat-local smoke-local \
+.PHONY: help test lint up down image ecr-login push dev oauth-status chat smoke chat-local smoke-local \
         tf-init tf-plan tf-apply tf-fmt github-remote
 
 help: ## Show this help
@@ -31,8 +31,26 @@ up: ## Build and start the app container
 down: ## Stop the container
 	docker compose down
 
+AWS_REGION ?= ap-southeast-2
+IMAGE_TAG ?= $(shell git rev-parse --short HEAD)
+# Comes from the ECS stack; empty until `terraform -chdir=terraform/ecs apply` runs.
+ECR_REPO ?= $(shell terraform -chdir=terraform/ecs output -raw ecr_repository_url 2>/dev/null)
+ECR_REGISTRY = $(firstword $(subst /, ,$(ECR_REPO)))
+
 image: ## Build the app image
 	docker build -t zuchat .
+
+ecr-login: ## Log docker in to ECR
+	@test -n "$(ECR_REPO)" || { echo "error: no ECR repo - run 'terraform -chdir=terraform/ecs apply' first" >&2; exit 1; }
+	aws ecr get-login-password --region $(AWS_REGION) \
+	  | docker login --username AWS --password-stdin $(ECR_REGISTRY)
+
+push: ecr-login ## Build and push the image to ECR (tag: $(IMAGE_TAG) + latest)
+	@test -n "$(ECR_REPO)" || exit 1
+	docker build --platform linux/amd64 -t $(ECR_REPO):$(IMAGE_TAG) -t $(ECR_REPO):latest .
+	docker push $(ECR_REPO):$(IMAGE_TAG)
+	docker push $(ECR_REPO):latest
+	@echo "pushed $(ECR_REPO):$(IMAGE_TAG) and :latest"
 
 test: ## Unit tests: local venv, no network, no server
 	uv run pytest
