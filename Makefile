@@ -36,20 +36,24 @@ IMAGE_TAG ?= $(shell git rev-parse --short HEAD)
 # Comes from the ECS stack; empty until `terraform -chdir=terraform/ecs apply` runs.
 ECR_REPO ?= $(shell terraform -chdir=terraform/ecs output -raw ecr_repository_url 2>/dev/null)
 ECR_REGISTRY = $(firstword $(subst /, ,$(ECR_REPO)))
+# Docker's global credsStore is `pass` on this machine; ECR auth goes to its own
+# config directory instead, so nothing depends on a GPG key being set up.
+DOCKER_CFG ?= $(CURDIR)/.docker-ecr
 
 image: ## Build the app image
 	docker build -t zuchat .
 
 ecr-login: ## Log docker in to ECR
 	@test -n "$(ECR_REPO)" || { echo "error: no ECR repo - run 'terraform -chdir=terraform/ecs apply' first" >&2; exit 1; }
+	@mkdir -p "$(DOCKER_CFG)"
 	aws ecr get-login-password --region $(AWS_REGION) \
-	  | docker login --username AWS --password-stdin $(ECR_REGISTRY)
+	  | DOCKER_CONFIG="$(DOCKER_CFG)" docker login --username AWS --password-stdin $(ECR_REGISTRY)
 
 push: ecr-login ## Build and push the image to ECR (tag: $(IMAGE_TAG) + latest)
 	@test -n "$(ECR_REPO)" || exit 1
-	docker build --platform linux/amd64 -t $(ECR_REPO):$(IMAGE_TAG) -t $(ECR_REPO):latest .
-	docker push $(ECR_REPO):$(IMAGE_TAG)
-	docker push $(ECR_REPO):latest
+	DOCKER_CONFIG="$(DOCKER_CFG)" docker build --platform linux/amd64 -t $(ECR_REPO):$(IMAGE_TAG) -t $(ECR_REPO):latest .
+	DOCKER_CONFIG="$(DOCKER_CFG)" docker push $(ECR_REPO):$(IMAGE_TAG)
+	DOCKER_CONFIG="$(DOCKER_CFG)" docker push $(ECR_REPO):latest
 	@echo "pushed $(ECR_REPO):$(IMAGE_TAG) and :latest"
 
 test: ## Unit tests: local venv, no network, no server

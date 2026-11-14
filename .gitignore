@@ -17,3 +17,6 @@ terraform/**/.terraform/
 *.tfstate
 *.tfstate.*
 terraform.tfvars
+
+# Local ECR docker credentials (make push)
+.docker-ecr/
