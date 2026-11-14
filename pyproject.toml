@@ -26,6 +26,7 @@ build-backend = "uv_build"
 dev = [
     "debugpy>=1.8.22",
     "pytest>=9.2.0",
+    "ruff>=0.17.5",
 ]
 
 [tool.pytest.ini_options]
