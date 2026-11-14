@@ -124,6 +124,16 @@ resource "aws_iam_role_policy" "tf_apply" {
 
 # The boundary is the ceiling: even if the policy above drifts, these stay denied.
 data "aws_iam_policy_document" "tf_apply_boundary" {
+  # A permissions boundary is an *intersection*: it must grant everything the
+  # role may do, then carve out the denials. Without this Allow, the boundary
+  # permits nothing at all.
+  statement {
+    sid       = "AllowAll"
+    effect    = "Allow"
+    actions   = ["*"]
+    resources = ["*"]
+  }
+
   statement {
     sid       = "DenyIdentityEscalation"
     effect    = "Deny"
