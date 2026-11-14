@@ -8,6 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from zuchat import deepseek
+from zuchat.app import create_app
 from zuchat.auth import current_user, is_allowed, oauth
 from zuchat.config import get_settings
 from zuchat.deps import deepseek_api_key
@@ -175,3 +176,36 @@ def test_chat_sends_message_to_api(
     assert response.status_code == 200
     assert response.json() == {"reply": "hello back"}
     assert seen == {"api_key": TEST_API_KEY, "message": "hello"}
+
+
+def test_security_headers_present(client: TestClient) -> None:
+    headers = client.get("/health").headers
+
+    assert headers["x-content-type-options"] == "nosniff"
+    assert headers["x-frame-options"] == "DENY"
+    assert headers["referrer-policy"] == "no-referrer"
+    assert headers["permissions-policy"] == "geolocation=(), microphone=(), camera=()"
+    assert "default-src 'self'" in headers["content-security-policy"]
+
+
+def test_hsts_only_over_https(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    assert "strict-transport-security" not in client.get("/health").headers
+
+    monkeypatch.setenv("APP_BASE_URL", "https://zuchat.test")
+    assert "strict-transport-security" in client.get("/health").headers
+
+
+def test_docs_serve_by_default(client: TestClient) -> None:
+    assert client.get("/docs").status_code == 200
+
+
+def test_docs_disabled_when_asked(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ENABLE_DOCS", "false")
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-test-0000000000000000")
+    monkeypatch.setenv("SESSION_SECRET", "test-secret")
+    get_settings.cache_clear()
+    with TestClient(create_app()) as fresh:
+        assert fresh.get("/docs").status_code == 404
+        assert fresh.get("/openapi.json").status_code == 404
