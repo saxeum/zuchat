@@ -53,3 +53,9 @@ variable "image_tag" {
   type        = string
   default     = "latest"
 }
+
+variable "certificate_arn" {
+  description = "Issued ACM certificate ARN; empty means HTTP only (no OAuth)."
+  type        = string
+  default     = ""
+}
