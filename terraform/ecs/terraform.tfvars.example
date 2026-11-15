@@ -14,6 +14,7 @@ allowed_emails   = "you@example.com"  # empty string admits any Google account
 # max_concurrent_per_user       = 1
 # max_concurrent_total          = 8
 # session_max_age_seconds       = 86400
+# max_body_bytes                = 65536
 # rate_limit_per_minute         = 10
 # rate_limit_global_per_minute  = 60
 # token_budget_per_day          = 100000

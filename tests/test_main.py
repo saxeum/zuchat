@@ -675,3 +675,62 @@ def test_session_cookie_lifetime_is_configurable(
     monkeypatch.setenv("SESSION_MAX_AGE_SECONDS", "600")
 
     assert "Max-Age=600" in _login_cookie(monkeypatch)
+
+
+def _fresh_app(monkeypatch: pytest.MonkeyPatch, body_limit: str | None) -> object:
+    """Build an app with no dependency overrides, optionally capped."""
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-test-0000000000000000")
+    monkeypatch.setenv("SESSION_SECRET", "test-secret")
+    if body_limit is None:
+        monkeypatch.delenv("MAX_BODY_BYTES", raising=False)
+    else:
+        monkeypatch.setenv("MAX_BODY_BYTES", body_limit)
+    get_settings.cache_clear()
+    return create_app()
+
+
+def test_an_oversized_body_is_rejected_before_auth(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    with TestClient(_fresh_app(monkeypatch, "1024")) as fresh:
+        response = fresh.post(
+            "/api/chat",
+            content=b"x" * 2048,
+            headers={"Content-Type": "application/json"},
+        )
+
+    # 413, not 401: the body is refused before authentication runs.
+    assert response.status_code == 413
+    assert "too large" in response.json()["detail"]
+    # The security headers middleware must still wrap this response.
+    assert response.headers["x-content-type-options"] == "nosniff"
+
+
+def test_a_chunked_body_is_capped_too(monkeypatch: pytest.MonkeyPatch) -> None:
+    with TestClient(_fresh_app(monkeypatch, "1024")) as fresh:
+        response = fresh.post(
+            "/api/chat",
+            content=iter([b"x" * 700, b"x" * 700]),
+            headers={"Content-Type": "application/json"},
+        )
+
+    assert response.status_code == 413
+
+
+def test_a_body_under_the_limit_still_reaches_auth(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    with TestClient(_fresh_app(monkeypatch, "1024")) as fresh:
+        response = fresh.post("/api/chat", json={"message": "hi"})
+
+    assert response.status_code == 401
+
+
+def test_the_default_limit_allows_a_full_length_message(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    with TestClient(_fresh_app(monkeypatch, None)) as fresh:
+        response = fresh.post("/api/chat", json={"message": "x" * 4000})
+
+    # Authentication, not the transport cap: the ceiling is comfortable.
+    assert response.status_code == 401
