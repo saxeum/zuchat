@@ -12,8 +12,10 @@ locals {
   account      = data.aws_caller_identity.current.account_id
   state_bucket = "zuchat-tfstate-${local.account}"
 
-  # One subject per role. The plan role is read-only, so it may be assumed from
-  # any ref; the apply role's subject *is* the gate, so it stays narrow.
+  # One subject per role. The plan role is assumed from any ref, because
+  # `terraform plan` runs on pull requests — so its *policy* is the control: it
+  # can read the state and describe this stack, and nothing else. The apply
+  # role's subject is the gate, so it stays as narrow as an Environment.
   # GitHub issues *immutable* subjects for this repo:
   #   gh api repos/saxeum/zuchat/actions/oidc/customization/sub
   #   -> sub_claim_prefix "repo:saxeum@343752441/zuchat@1457250024"
@@ -58,10 +60,78 @@ resource "aws_iam_role" "tf_plan" {
   assume_role_policy = data.aws_iam_policy_document.github_trust["plan"].json
 }
 
-# ReadOnlyAccess: broad by design, and read access cannot delete the ALB.
-resource "aws_iam_role_policy_attachment" "tf_plan" {
-  role       = aws_iam_role.tf_plan.name
-  policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
+# Terraform reads the resources it plans against, so this cannot be nothing —
+# but it is scoped rather than ReadOnlyAccess, which also grants s3:GetObject
+# and ssm:Get* across the whole account. Any pull request can assume this role.
+data "aws_iam_policy_document" "tf_plan" {
+  statement {
+    sid       = "StateBucket"
+    actions   = ["s3:GetBucketLocation", "s3:ListBucket"]
+    resources = ["arn:aws:s3:::${local.state_bucket}"]
+  }
+
+  statement {
+    sid       = "StateObjects"
+    actions   = ["s3:GetObject"]
+    resources = ["arn:aws:s3:::${local.state_bucket}/*"]
+  }
+
+  # Describe and List only: they change nothing and expose no application data.
+  statement {
+    sid = "DescribeStack"
+    actions = [
+      "acm:Describe*",
+      "acm:List*",
+      "application-autoscaling:Describe*",
+      "autoscaling:Describe*",
+      "cloudwatch:Describe*",
+      "cloudwatch:ListTagsForResource",
+      "ec2:Describe*",
+      "ecr:Describe*",
+      "ecr:GetLifecyclePolicy",
+      "ecr:GetRepositoryPolicy",
+      "ecr:List*",
+      "ecs:Describe*",
+      "ecs:List*",
+      "elasticloadbalancing:Describe*",
+      "logs:Describe*",
+      "logs:ListTagsForResource",
+      "logs:ListTagsLogGroup",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid = "IamMetadata"
+    actions = [
+      "iam:GetOpenIDConnectProvider",
+      "iam:GetPolicy",
+      "iam:GetPolicyVersion",
+      "iam:GetRole",
+      "iam:GetRolePolicy",
+      "iam:ListAttachedRolePolicies",
+      "iam:ListInstanceProfilesForRole",
+      "iam:ListOpenIDConnectProviders",
+      "iam:ListPolicyTags",
+      "iam:ListPolicyVersions",
+      "iam:ListRolePolicies",
+      "iam:ListRoleTags",
+    ]
+    resources = ["*"]
+  }
+
+  # A plan reads secret ARNs, never secret values.
+  statement {
+    sid       = "SecretMetadata"
+    actions   = ["secretsmanager:DescribeSecret"]
+    resources = ["arn:aws:secretsmanager:${var.region}:${local.account}:secret:${var.name}/*"]
+  }
+}
+
+resource "aws_iam_role_policy" "tf_plan" {
+  name   = "plan"
+  role   = aws_iam_role.tf_plan.id
+  policy = data.aws_iam_policy_document.tf_plan.json
 }
 
 output "tf_plan_role_arn" {

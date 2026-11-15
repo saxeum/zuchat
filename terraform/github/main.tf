@@ -110,16 +110,26 @@ output "html_url" {
   value       = github_repository.repo.html_url
 }
 
-# The gate for Terraform apply: only master, only with a human approval.
+# The gate for Terraform apply: only master, and only once a human has approved
+# the deployment. This is the credential boundary, not just a UI pause: the
+# apply role's OIDC subject *is* this Environment.
 resource "github_repository_environment" "production" {
   repository  = github_repository.repo.name
   environment = "production"
+
+  # The only account here is an admin, so without this the reviewer requirement
+  # would be bypassed by the very person it is meant to hold.
+  can_admins_bypass = false
+
+  # `prevent_self_review` stays default (false): with one account, forbidding
+  # self-approval would mean nothing could ever deploy. The gate is that the
+  # deployment has to be approved at all.
+  reviewers {
+    users = [var.owner]
+  }
 
   deployment_branch_policy {
     protected_branches     = true
     custom_branch_policies = false
   }
-
-  # No required reviewers for now: the OIDC subject still needs this
-  # Environment, but deploys do not wait for a human.
 }
