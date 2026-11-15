@@ -2,6 +2,9 @@
 
 A FastAPI chat app backed by the DeepSeek API, running in Docker.
 
+**Live at <https://zuchat.foonix.net> — sign in with any Google account to chat.**
+It is rate limited per user and per day; the knobs are in [Notes](#notes).
+
 ## Bootstrap
 
 One file, outside the repo:
