@@ -122,4 +122,9 @@ textarea {
   resize: none;
 }
 
-
+/* The signed-out explanation: present, quiet, not a call to action. */
+#intro {
+  margin: 0;
+  color: color-mix(in srgb, currentColor 65%, transparent);
+  font-size: 0.9rem;
+}

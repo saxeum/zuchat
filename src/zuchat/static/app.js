@@ -3,6 +3,7 @@ const statusEl = document.getElementById("status");
 const logEl = document.getElementById("log");
 const form = document.getElementById("composer");
 const input = document.getElementById("message");
+const introEl = document.getElementById("intro");
 
 // textContent, never innerHTML: replies are untrusted.
 function line(kind, text) {
@@ -26,6 +27,8 @@ async function whoAmI() {
   form.hidden = !response.ok;
   logEl.hidden = !response.ok;
   if (!response.ok) {
+    // A visitor with no session gets one line saying what this is and how in.
+    introEl.hidden = false;
     statusEl.textContent = "signed out · ";
     statusEl.append(link("/login", "sign in"));
     return;
