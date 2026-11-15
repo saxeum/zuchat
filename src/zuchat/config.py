@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     rate_limit_per_minute: int = 10
     rate_limit_global_per_minute: int = 60
     max_concurrent_per_user: int = 1
+    max_concurrent_total: int = 8
     token_budget_per_day: int = 100_000
     token_budget_global_per_day: int = 1_000_000
 

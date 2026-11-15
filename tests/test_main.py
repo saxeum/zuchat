@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import inspect
 from typing import TYPE_CHECKING
 
 import pytest
 from fastapi.testclient import TestClient
 
-from zuchat import deepseek, ratelimit
+from zuchat import deepseek, ops_routes, ratelimit
 from zuchat.app import create_app
 from zuchat.auth import current_user, is_allowed, oauth
 from zuchat.config import get_settings
@@ -26,6 +27,7 @@ _ENV = {
     "tokens_per_user": "TOKEN_BUDGET_PER_DAY",
     "tokens_everyone": "TOKEN_BUDGET_GLOBAL_PER_DAY",
     "concurrent": "MAX_CONCURRENT_PER_USER",
+    "concurrent_total": "MAX_CONCURRENT_TOTAL",
 }
 
 
@@ -37,6 +39,7 @@ def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     monkeypatch.setenv("RATE_LIMIT_PER_MINUTE", "1000")
     monkeypatch.setenv("RATE_LIMIT_GLOBAL_PER_MINUTE", "1000")
     monkeypatch.setenv("MAX_CONCURRENT_PER_USER", "100")
+    monkeypatch.setenv("MAX_CONCURRENT_TOTAL", "1000")
     monkeypatch.setenv("TOKEN_BUDGET_PER_DAY", "10000000")
     monkeypatch.setenv("TOKEN_BUDGET_GLOBAL_PER_DAY", "10000000")
     get_settings.cache_clear()
@@ -541,6 +544,57 @@ def test_the_slot_is_released_after_each_reply(
 
     for _ in range(3):
         assert client.post("/api/chat", json={"message": "hi"}).status_code == 200
+
+
+def test_a_shared_slot_caps_concurrency(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_limits(monkeypatch, concurrent=100, concurrent_total=1)
+    monkeypatch.setattr(deepseek, "chat", _fake_chat)
+
+    ratelimit.get_limits().in_flight_all.acquire(ratelimit.EVERYONE)
+
+    blocked = client.post("/api/chat", json={"message": "hi"})
+
+    assert blocked.status_code == 429
+    assert "busy" in blocked.json()["detail"]
+
+
+def test_a_denied_user_does_not_hold_the_shared_slot(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_limits(monkeypatch, concurrent=1, concurrent_total=1)
+    monkeypatch.setattr(deepseek, "chat", _fake_chat)
+
+    limits = ratelimit.get_limits()
+    limits.in_flight.acquire("test@example.com")  # this user is already busy
+
+    assert client.post("/api/chat", json={"message": "hi"}).status_code == 429
+    limits.in_flight.release("test@example.com")
+
+    # The denied request must not have taken the shared slot on its way out.
+    assert client.post("/api/chat", json={"message": "hi"}).status_code == 200
+
+
+def test_health_endpoints_do_not_queue_behind_threads() -> None:
+    # Sync handlers run in the forty-thread pool that streaming replies also
+    # hold, so the ALB must be able to reach these while chat threads are busy.
+    assert inspect.iscoroutinefunction(ops_routes.health)
+    assert inspect.iscoroutinefunction(ops_routes.ready)
+
+
+def test_an_abandoned_hold_expires() -> None:
+    now = 0.0
+    gate = ratelimit.Gate(1, stale_after=10.0, clock=lambda: now)
+
+    assert gate.acquire("a")
+    assert not gate.acquire("a")
+
+    now = 11.0
+    # The hold never came back; it must not lock the user out for good.
+    assert gate.acquire("a")
 
 
 def test_budget_resets_with_the_window() -> None:

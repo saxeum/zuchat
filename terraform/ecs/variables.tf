@@ -66,6 +66,12 @@ variable "max_concurrent_per_user" {
   default     = 1
 }
 
+variable "max_concurrent_total" {
+  description = "Replies allowed in flight across all users (0 disables)."
+  type        = number
+  default     = 8
+}
+
 variable "max_output_tokens" {
   description = "Cap on tokens in one reply, so no single request is unbounded."
   type        = number
