@@ -84,11 +84,24 @@ everyone else gets 403. `/logout` clears the session.
 - The key is an environment variable inside the container: `DEEPSEEK_API_KEY`.
 - `Settings` requires it; the app refuses to start without it.
 - To use a different key file: `make up KEY_FILE=/path/to/file`.
-- The two chat routes are rate limited per signed-in user
-  (`RATE_LIMIT_PER_MINUTE`, default 10/min) and across all users
-  (`RATE_LIMIT_GLOBAL_PER_MINUTE`, default 60/min); 0 disables either. A caller
-  over the limit gets 429 with a `Retry-After`. The counters live in the
-  process, so they reset on deploy and are not shared between tasks.
+- Chat is bounded on four axes. All are environment variables, all can be set
+  to 0 to disable that control:
+
+  | Variable | Default | Bounds |
+  | --- | --- | --- |
+  | `RATE_LIMIT_PER_MINUTE` | `10` | requests per user per minute |
+  | `RATE_LIMIT_GLOBAL_PER_MINUTE` | `60` | requests across all users per minute |
+  | `MAX_CONCURRENT_PER_USER` | `1` | replies in flight per user |
+  | `TOKEN_BUDGET_PER_DAY` | `100000` | tokens per user per UTC day |
+  | `TOKEN_BUDGET_GLOBAL_PER_DAY` | `1000000` | tokens across all users per UTC day |
+
+  Request counts catch scripts; the token budgets catch the bill, because one
+  long prompt costs more than hundreds of short ones. `MAX_OUTPUT_TOKENS`
+  (default `1024`) caps each reply so no single request is unbounded. Spend is
+  what DeepSeek reports in `usage`, estimated from the text only when a stream
+  ends without its usage frame. Over any limit returns 429 with `Retry-After`.
+  The counters live in the process, so they reset on deploy and are not shared
+  between tasks.
 - `ALLOWED_EMAILS` empty (the default) admits any Google account; set it to
   keep the door shut.
 
@@ -105,6 +118,6 @@ MIT — see [LICENSE](LICENSE).
 | `src/zuchat/config.py` | settings (`deepseek_api_key`) |
 | `src/zuchat/main.py` | FastAPI app |
 | `src/zuchat/deepseek.py` | DeepSeek client (blocking and streaming) |
-| `src/zuchat/ratelimit.py` | per-user and shared chat budgets |
+| `src/zuchat/ratelimit.py` | request rate, concurrency, and token budgets |
 | `src/zuchat/static/` | the page: HTML, JS, CSS, vendored fonts |
 | `scripts/chat.sh`, `scripts/smoke.sh` | HTTP helpers |

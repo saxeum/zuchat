@@ -19,14 +19,26 @@ if TYPE_CHECKING:
 
 TEST_API_KEY = "test-key"
 
+# Python name -> environment variable, so a test names only what it overrides.
+_ENV = {
+    "per_user": "RATE_LIMIT_PER_MINUTE",
+    "everyone": "RATE_LIMIT_GLOBAL_PER_MINUTE",
+    "tokens_per_user": "TOKEN_BUDGET_PER_DAY",
+    "tokens_everyone": "TOKEN_BUDGET_GLOBAL_PER_DAY",
+    "concurrent": "MAX_CONCURRENT_PER_USER",
+}
+
 
 @pytest.fixture
 def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     """Hermetic client: fake key in the environment, dependency overridden."""
     monkeypatch.setenv("DEEPSEEK_API_KEY", TEST_API_KEY)
-    # Generous by default: only the tests that care about the quota should trip it.
+    # Generous by default: only the tests that care about a control should trip it.
     monkeypatch.setenv("RATE_LIMIT_PER_MINUTE", "1000")
     monkeypatch.setenv("RATE_LIMIT_GLOBAL_PER_MINUTE", "1000")
+    monkeypatch.setenv("MAX_CONCURRENT_PER_USER", "100")
+    monkeypatch.setenv("TOKEN_BUDGET_PER_DAY", "10000000")
+    monkeypatch.setenv("TOKEN_BUDGET_GLOBAL_PER_DAY", "10000000")
     get_settings.cache_clear()
     ratelimit.get_limits.cache_clear()
     api.dependency_overrides[deepseek_api_key] = lambda: TEST_API_KEY
@@ -187,10 +199,10 @@ def test_chat_sends_message_to_api(
 ) -> None:
     seen: dict[str, str] = {}
 
-    def fake_chat(api_key: str, message: str) -> str:
+    def fake_chat(api_key: str, message: str, **_: object) -> deepseek.Reply:
         seen["api_key"] = api_key
         seen["message"] = message
-        return "hello back"
+        return deepseek.Reply(text="hello back", usage=deepseek.Usage(2, 3))
 
     monkeypatch.setattr(deepseek, "chat", fake_chat)
 
@@ -219,11 +231,16 @@ def test_stream_sends_deltas_then_done(
 ) -> None:
     seen: dict[str, str] = {}
 
-    def fake_stream(api_key: str, message: str) -> Iterator[str]:
+    def fake_stream(
+        api_key: str,
+        message: str,
+        **_: object,
+    ) -> Iterator[deepseek.Chunk]:
         seen["api_key"] = api_key
         seen["message"] = message
-        yield "hel"
-        yield "lo"
+        yield deepseek.Chunk(text="hel")
+        yield deepseek.Chunk(text="lo")
+        yield deepseek.Chunk(usage=deepseek.Usage(1, 2))
 
     monkeypatch.setattr(deepseek, "stream", fake_stream)
 
@@ -241,7 +258,11 @@ def test_stream_reports_a_provider_failure_in_band(
     client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def fake_stream(_api_key: str, _message: str) -> Iterator[str]:
+    def fake_stream(
+        _api_key: str,
+        _message: str,
+        **_: object,
+    ) -> Iterator[deepseek.Chunk]:
         msg = "provider down"
         raise RuntimeError(msg)
         yield  # unreachable: a raise on first iteration is the case under test
@@ -274,30 +295,48 @@ def test_stream_parses_provider_frames() -> None:
         b'data: {"choices": [{"delta": {"role": "assistant"}}]}\n',
         b'data: {"choices": [{"delta": {"content": "hel"}}]}\n',
         b'data: {"choices": [{"delta": {"content": "lo"}}]}\n',
+        (
+            b'data: {"choices": [], '
+            b'"usage": {"prompt_tokens": 3, "completion_tokens": 2}}\n'
+        ),
         b"data: [DONE]\n",
         b'data: {"choices": [{"delta": {"content": "ignored"}}]}\n',
     ]
 
-    # The parser is the part a live reply cannot cover in a unit test.
-    assert list(deepseek._deltas(lines)) == ["hel", "lo"]  # noqa: SLF001
+    # The parser is the part a live reply cannot cover in a unit test; the
+    # frame shapes above were confirmed against the real API.
+    chunks = list(deepseek._chunks(lines))  # noqa: SLF001
+
+    assert [chunk.text for chunk in chunks if chunk.text] == ["hel", "lo"]
+    assert chunks[-1].usage == deepseek.Usage(prompt_tokens=3, completion_tokens=2)
 
 
 def _set_limits(
     monkeypatch: pytest.MonkeyPatch,
-    per_user: int,
-    everyone: int,
+    /,
+    **limits: int,
 ) -> None:
-    monkeypatch.setenv("RATE_LIMIT_PER_MINUTE", str(per_user))
-    monkeypatch.setenv("RATE_LIMIT_GLOBAL_PER_MINUTE", str(everyone))
+    """Override only the controls a test cares about; the rest stay generous."""
+    for name, value in limits.items():
+        monkeypatch.setenv(_ENV[name], str(value))
     ratelimit.get_limits.cache_clear()
 
 
-def _fake_chat(_api_key: str, _message: str) -> str:
-    return "ok"
+def _fake_chat(
+    _api_key: str,
+    _message: str,
+    **_: object,
+) -> deepseek.Reply:
+    """Two tokens per call, so budgets are easy to reason about."""
+    return deepseek.Reply(text="ok", usage=deepseek.Usage(1, 1))
 
 
-def _fake_stream(_api_key: str, _message: str) -> Iterator[str]:
-    yield "ok"
+def _fake_stream(
+    _api_key: str,
+    _message: str,
+    **_: object,
+) -> Iterator[deepseek.Chunk]:
+    yield deepseek.Chunk(text="ok")
 
 
 def test_chat_is_rate_limited_per_user(
@@ -366,13 +405,162 @@ def test_limiter_frees_a_slot_after_the_window() -> None:
     now = 0.0
     limiter = ratelimit.Limiter(2, window=60.0, clock=lambda: now)
 
-    assert limiter.retry_after("a") == 0.0
-    assert limiter.retry_after("a") == 0.0
-    assert limiter.retry_after("a") == pytest.approx(60.0)
-    assert limiter.retry_after("b") == 0.0  # keys are independent
+    assert limiter.hit("a") == 0.0
+    assert limiter.hit("a") == 0.0
+    assert limiter.hit("a") == pytest.approx(60.0)
+    assert limiter.hit("b") == 0.0  # keys are independent
 
     now = 60.0
-    assert limiter.retry_after("a") == 0.0
+    assert limiter.hit("a") == 0.0
+
+
+def test_chat_passes_the_output_cap_to_the_provider(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seen: dict[str, int | None] = {}
+
+    def fake_chat(
+        _api_key: str,
+        _message: str,
+        *,
+        max_tokens: int | None = None,
+    ) -> deepseek.Reply:
+        seen["max_tokens"] = max_tokens
+        return deepseek.Reply(text="ok")
+
+    monkeypatch.setattr(deepseek, "chat", fake_chat)
+
+    assert client.post("/api/chat", json={"message": "hi"}).status_code == 200
+    # Without this every reply is paid for at whatever length the model picks.
+    assert seen["max_tokens"] == 1024
+
+
+def test_a_spent_token_budget_blocks_the_next_request(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_limits(monkeypatch, tokens_per_user=10)
+    monkeypatch.setattr(deepseek, "chat", _fake_chat)  # 2 tokens a call
+
+    for _ in range(5):
+        assert client.post("/api/chat", json={"message": "hi"}).status_code == 200
+
+    blocked = client.post("/api/chat", json={"message": "hi"})
+
+    assert blocked.status_code == 429
+    assert "token budget" in blocked.json()["detail"]
+    assert int(blocked.headers["retry-after"]) >= 1
+
+
+def test_the_shared_token_budget_caps_everyone(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_limits(monkeypatch, tokens_everyone=4)
+    monkeypatch.setattr(deepseek, "chat", _fake_chat)
+
+    assert client.post("/api/chat", json={"message": "one"}).status_code == 200
+    assert client.post("/api/chat", json={"message": "two"}).status_code == 200
+
+    api.dependency_overrides[current_user] = lambda: {"email": "other@example.com"}
+    third = client.post("/api/chat", json={"message": "three"})
+
+    # A fresh account is under its own budget; the shared one is spent.
+    assert third.status_code == 429
+
+
+def test_the_stream_charges_the_reported_usage(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_limits(monkeypatch, tokens_per_user=1000)
+
+    def fake_stream(
+        _api_key: str,
+        _message: str,
+        **_: object,
+    ) -> Iterator[deepseek.Chunk]:
+        yield deepseek.Chunk(text="ok")
+        yield deepseek.Chunk(
+            usage=deepseek.Usage(prompt_tokens=2, completion_tokens=2),
+        )
+
+    monkeypatch.setattr(deepseek, "stream", fake_stream)
+
+    assert client.post("/api/chat/stream", json={"message": "hi"}).status_code == 200
+    assert ratelimit.get_limits().tokens_per_user.spent("test@example.com") == 4
+
+
+def test_a_stream_without_usage_is_estimated(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_limits(monkeypatch, tokens_per_user=1000)
+
+    def fake_stream(
+        _api_key: str,
+        _message: str,
+        **_: object,
+    ) -> Iterator[deepseek.Chunk]:
+        yield deepseek.Chunk(text="abcd" * 5)  # 20 characters
+        msg = "connection dropped"
+        raise RuntimeError(msg)
+
+    monkeypatch.setattr(deepseek, "stream", fake_stream)
+
+    response = client.post("/api/chat/stream", json={"message": "hi"})
+
+    # 1 token for "hi" plus 6 for the twenty characters, rather than nothing.
+    assert response.status_code == 200
+    assert "event: error" in response.text
+    assert ratelimit.get_limits().tokens_per_user.spent("test@example.com") == 7
+
+
+def test_only_one_reply_at_a_time_per_user(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_limits(monkeypatch, concurrent=1)
+    monkeypatch.setattr(deepseek, "chat", _fake_chat)
+
+    ratelimit.get_limits().in_flight.acquire("test@example.com")  # hold the slot
+
+    blocked = client.post("/api/chat", json={"message": "hi"})
+
+    assert blocked.status_code == 429
+    assert "already in progress" in blocked.json()["detail"]
+
+
+def test_the_slot_is_released_after_each_reply(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_limits(monkeypatch, concurrent=1)
+    monkeypatch.setattr(deepseek, "chat", _fake_chat)
+
+    for _ in range(3):
+        assert client.post("/api/chat", json={"message": "hi"}).status_code == 200
+
+
+def test_budget_resets_with_the_window() -> None:
+    now = 0.0
+    budget = ratelimit.Budget(10, window=100.0, clock=lambda: now)
+    budget.add("a", 10)
+
+    assert budget.spent("a") == 10
+    assert budget.retry_after("a") == pytest.approx(100.0)
+    assert budget.spent("b") == 0
+
+    now = 100.0
+    assert budget.retry_after("a") == 0.0
+    assert budget.spent("a") == 0
+
+
+def test_token_estimate_is_a_rough_quarter() -> None:
+    assert ratelimit.estimate_tokens("") == 0
+    assert ratelimit.estimate_tokens("abcd") == 2
+    assert ratelimit.estimate_tokens("a" * 400) == 101
 
 
 def test_security_headers_present(client: TestClient) -> None:
