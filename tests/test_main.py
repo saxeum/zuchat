@@ -649,3 +649,29 @@ def test_docs_disabled_when_asked(monkeypatch: pytest.MonkeyPatch) -> None:
     with TestClient(create_app()) as fresh:
         assert fresh.get("/docs").status_code == 404
         assert fresh.get("/openapi.json").status_code == 404
+
+
+def _login_cookie(monkeypatch: pytest.MonkeyPatch) -> str:
+    """Issue a session cookie by starting the OAuth flow."""
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-test-0000000000000000")
+    monkeypatch.setenv("SESSION_SECRET", "test-secret")
+    monkeypatch.setenv("APP_BASE_URL", "http://testserver")
+    get_settings.cache_clear()
+    with TestClient(create_app()) as fresh:
+        response = fresh.get("/login", follow_redirects=False)
+    assert response.status_code == 302
+    return response.headers["set-cookie"]
+
+
+def test_session_cookie_lasts_one_day(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("SESSION_MAX_AGE_SECONDS", raising=False)
+
+    assert "Max-Age=86400" in _login_cookie(monkeypatch)
+
+
+def test_session_cookie_lifetime_is_configurable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("SESSION_MAX_AGE_SECONDS", "600")
+
+    assert "Max-Age=600" in _login_cookie(monkeypatch)
