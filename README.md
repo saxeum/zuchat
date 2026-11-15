@@ -95,6 +95,7 @@ everyone else gets 403. `/logout` clears the session.
   | `RATE_LIMIT_PER_MINUTE` | `10` | requests per user per minute |
   | `RATE_LIMIT_GLOBAL_PER_MINUTE` | `60` | requests across all users per minute |
   | `MAX_CONCURRENT_PER_USER` | `1` | replies in flight per user |
+  | `MAX_CONCURRENT_TOTAL` | `8` | replies in flight across all users |
   | `TOKEN_BUDGET_PER_DAY` | `100000` | tokens per user per UTC day |
   | `TOKEN_BUDGET_GLOBAL_PER_DAY` | `1000000` | tokens across all users per UTC day |
 

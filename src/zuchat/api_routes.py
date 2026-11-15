@@ -60,13 +60,25 @@ def chat_quota(user: Annotated[User, Depends(current_user)]) -> None:
 
 
 def _acquire(email: str) -> None:
-    """One reply at a time per user: parallel streams are the real fan-out."""
-    if not ratelimit.get_limits().in_flight.acquire(email):
+    """Take this user's slot, then one from the shared pool.
+
+    Two gates because they fail differently: one account must not fan out, and
+    the pool must not be emptied by many accounts at once. The shared slot is
+    taken last, so a caller denied by its own gate never occupies capacity
+    someone else could use.
+    """
+    limits = ratelimit.get_limits()
+    if not limits.in_flight.acquire(email):
         raise _too_many(1.0, "a reply is already in progress; wait for it")
+    if not limits.in_flight_all.acquire(ratelimit.EVERYONE):
+        limits.in_flight.release(email)
+        raise _too_many(1.0, "the service is busy; try again shortly")
 
 
 def _release(email: str) -> None:
-    ratelimit.get_limits().in_flight.release(email)
+    limits = ratelimit.get_limits()
+    limits.in_flight.release(email)
+    limits.in_flight_all.release(ratelimit.EVERYONE)
 
 
 @router.get("/me")

@@ -29,6 +29,7 @@ module "ecs" {
             { name = "ALLOWED_EMAILS", value = var.allowed_emails },
             { name = "MAX_OUTPUT_TOKENS", value = tostring(var.max_output_tokens) },
             { name = "MAX_CONCURRENT_PER_USER", value = tostring(var.max_concurrent_per_user) },
+            { name = "MAX_CONCURRENT_TOTAL", value = tostring(var.max_concurrent_total) },
             { name = "RATE_LIMIT_PER_MINUTE", value = tostring(var.rate_limit_per_minute) },
             { name = "RATE_LIMIT_GLOBAL_PER_MINUTE", value = tostring(var.rate_limit_global_per_minute) },
             { name = "TOKEN_BUDGET_PER_DAY", value = tostring(var.token_budget_per_day) },

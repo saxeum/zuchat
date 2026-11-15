@@ -25,8 +25,10 @@ WINDOW_SECONDS = 60.0
 DAY_SECONDS = 86400.0
 
 # A stream that never closed (client vanished, generator never finalised) must
-# not lock the user out forever, so a hold older than this is ignored.
-STALE_SECONDS = 300.0
+# not lock the user out forever. Kept short because the shared pool is only a
+# few slots wide: a leaked hold could otherwise lock everyone out. Expiring a
+# live stream early only over-admits by one, which costs far less.
+STALE_SECONDS = 120.0
 
 # The key for the shared budget. No email can collide with it.
 EVERYONE = "everyone"
@@ -193,6 +195,7 @@ class Limits:
     per_user: Limiter
     everyone: Limiter
     in_flight: Gate
+    in_flight_all: Gate
     tokens_per_user: Budget
     tokens_everyone: Budget
     max_output_tokens: int
@@ -206,6 +209,7 @@ def get_limits() -> Limits:
         per_user=Limiter(settings.rate_limit_per_minute),
         everyone=Limiter(settings.rate_limit_global_per_minute),
         in_flight=Gate(settings.max_concurrent_per_user),
+        in_flight_all=Gate(settings.max_concurrent_total),
         tokens_per_user=Budget(settings.token_budget_per_day),
         tokens_everyone=Budget(settings.token_budget_global_per_day),
         max_output_tokens=settings.max_output_tokens,
