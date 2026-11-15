@@ -27,6 +27,16 @@ variable "name" {
   default     = "zuchat"
 }
 
+variable "reviewers" {
+  description = <<-EOT
+    GitHub user logins who must approve a production deployment. Reviewers are
+    people: a login that resolves to an organisation is accepted by the API and
+    then ignored, so this is not tied to var.owner.
+  EOT
+  type        = list(string)
+  default     = []
+}
+
 variable "default_branch" {
   description = "Branch the protection attaches to."
   type        = string
@@ -50,9 +60,10 @@ locals {
 }
 
 # The environment's reviewer list takes numeric user IDs, not logins, so the
-# login in terraform.tfvars is resolved here rather than duplicated by hand.
-data "github_user" "owner" {
-  username = var.owner
+# logins in terraform.tfvars are resolved here rather than duplicated by hand.
+data "github_user" "reviewers" {
+  for_each = toset(var.reviewers)
+  username = each.value
 }
 
 resource "github_repository" "repo" {
@@ -152,8 +163,14 @@ resource "github_repository_environment" "production" {
   # `prevent_self_review` stays default (false): with one account, forbidding
   # self-approval would mean nothing could ever deploy. The gate is that the
   # deployment has to be approved at all.
-  reviewers {
-    users = [tonumber(data.github_user.owner.id)]
+  #
+  # Conditional because an empty list would mean "no reviewers" rather than an
+  # error, and a silent lack of a gate is the worst outcome here.
+  dynamic "reviewers" {
+    for_each = length(var.reviewers) > 0 ? [1] : []
+    content {
+      users = [for user in data.github_user.reviewers : tonumber(user.id)]
+    }
   }
 
   deployment_branch_policy {
