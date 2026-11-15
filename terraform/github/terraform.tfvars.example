@@ -1,2 +1,7 @@
 # Copy to terraform.tfvars (git-ignored).
 owner = "your-github-account"
+
+# Users who must approve a production deploy. Reviewers are people: a login
+# that resolves to an organisation is accepted by the API and then ignored, so
+# this is not the same value as owner.
+reviewers = ["your-github-login"]
