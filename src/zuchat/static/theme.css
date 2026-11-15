@@ -1,0 +1,101 @@
+/*
+ * Design tokens, lifted from numbat's web app (apps/web/src/styles/globals.css)
+ * by way of pydantachat, whose page markup and script zuchat's page is based on:
+ * a neutral product theme — grey canvas, hairline borders, one indigo accent,
+ * Geist for UI and JetBrains Mono for code. The variable names are kept
+ * identical so the codebases stay greppable against each other.
+ *
+ * Two deliberate differences from the original: the fonts are vendored here
+ * (`/static/fonts`) instead of imported from @fontsource, and dark mode follows
+ * `prefers-color-scheme` because this page has no `.dark` class to toggle.
+ */
+
+@font-face {
+  font-family: "Geist";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/static/fonts/geist-latin-wght-normal.woff2") format("woff2-variations");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url("/static/fonts/jetbrains-mono-latin-wght-normal.woff2") format("woff2-variations");
+}
+
+:root {
+  color-scheme: light;
+
+  --radius: 0.5rem;
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+
+  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  --background: #e9e9ec;
+  --foreground: #09090b;
+  --card: #ffffff;
+  --card-foreground: #09090b;
+  --primary: #5e6ad2;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #f4f4f5;
+  --accent-foreground: #18181b;
+  --destructive: #dc2626;
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --ring: #5e6ad2;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --background: #08090a;
+    --foreground: #ededed;
+    --card: #0f0f10;
+    --card-foreground: #ededed;
+    --primary: #5e6ad2;
+    --primary-foreground: #ffffff;
+    --secondary: #1a1a1d;
+    --secondary-foreground: #ededed;
+    --muted: #161618;
+    --muted-foreground: #8b8b93;
+    --accent: #1a1a1d;
+    --accent-foreground: #ededed;
+    --destructive: #f2555a;
+    --border: #232327;
+    --input: #232327;
+    --ring: #5e6ad2;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  border-color: var(--border);
+}
+
+/* `display: flex` on a component would otherwise beat the `hidden` attribute. */
+[hidden] {
+  display: none !important;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--primary) 30%, transparent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}

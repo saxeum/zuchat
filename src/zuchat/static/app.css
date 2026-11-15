@@ -1,0 +1,382 @@
+/* The chat surface, built on the tokens in theme.css. */
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 46rem;
+  height: 100dvh;
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 1.75rem;
+}
+
+/* --- header ------------------------------------------------------------- */
+
+header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+header p {
+  margin: 0.15rem 0 0;
+  font-size: 0.9rem;
+  color: var(--muted-foreground);
+}
+
+#status {
+  flex: none;
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+
+#status a {
+  color: var(--foreground);
+  text-decoration: none;
+  border-bottom: 1px solid var(--border);
+}
+
+#status a:hover {
+  border-bottom-color: var(--primary);
+}
+
+/* --- transcript --------------------------------------------------------- */
+
+#log {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.75rem;
+  /* The transcript scrolls; the composer stays put at the bottom. */
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+#log:empty::before {
+  content: "No messages yet — ask anything.";
+  font-size: 0.9rem;
+  color: var(--muted-foreground);
+}
+
+#log article {
+  min-width: 0; /* an unbroken paste must not widen the column */
+  padding: 0.65rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+}
+
+#log article > header {
+  display: block;
+  margin-bottom: 0.2rem;
+}
+
+#log article > header small {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+#log article .body {
+  overflow-wrap: anywhere;
+}
+
+/* Markdown rendered by app.js: a deliberately small subset. */
+#log .body > :first-child {
+  margin-top: 0;
+}
+
+#log .body > :last-child {
+  margin-bottom: 0;
+}
+
+#log .body p,
+#log .body ul,
+#log .body ol,
+#log .body pre,
+#log .body blockquote,
+#log .body table {
+  margin: 0 0 0.55rem;
+}
+
+#log .body h3,
+#log .body h4,
+#log .body h5,
+#log .body h6 {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+  line-height: 1.3;
+}
+
+#log .body ul,
+#log .body ol {
+  padding-left: 1.25rem;
+}
+
+#log .body li {
+  margin: 0.1rem 0;
+}
+
+#log .body code {
+  padding: 0.1em 0.3em;
+  border-radius: var(--radius-sm);
+  background: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+}
+
+#log .body pre {
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--muted);
+  overflow-x: auto;
+}
+
+#log .body pre code {
+  padding: 0;
+  background: none;
+  font-size: 0.8125rem;
+}
+
+#log .body blockquote {
+  padding-left: 0.7rem;
+  border-left: 2px solid var(--border);
+  color: var(--muted-foreground);
+}
+
+#log .body table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+
+#log .body th,
+#log .body td {
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+#log .body th {
+  background: var(--muted);
+  font-weight: 600;
+}
+
+#log .body a {
+  color: var(--primary);
+  text-underline-offset: 2px;
+}
+
+#log .body hr {
+  margin: 0.7rem 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
+/* The user's own message is text, not markdown: keep their line breaks. */
+#log article.you .body,
+#log article.system .body {
+  white-space: pre-wrap;
+}
+
+#log article.you {
+  align-self: flex-end;
+  max-width: 85%;
+  /* A faint accent tint, so it reads as "mine" against the grey canvas. */
+  border-color: color-mix(in oklab, var(--primary) 22%, var(--border));
+  background: color-mix(in oklab, var(--primary) 8%, var(--card));
+}
+
+#log article.bot {
+  align-self: flex-start;
+  max-width: 92%;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
+}
+
+#log article.system {
+  align-self: center;
+  border: 0;
+  background: none;
+  padding: 0.25rem 0;
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+  text-align: center;
+}
+
+#log article.system > header {
+  display: none;
+}
+
+/* --- composer ----------------------------------------------------------- */
+
+#composer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.75rem;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-xl);
+  background: var(--card);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+#composer:focus-within {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 22%, transparent);
+}
+
+#composer label {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+#message {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  resize: none;
+}
+
+#message:focus {
+  outline: none;
+}
+
+#message::placeholder {
+  color: var(--muted-foreground);
+}
+
+.row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+button {
+  padding: 0.45rem 0.9rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease, opacity 120ms ease;
+}
+
+button[type="submit"] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+button[type="submit"]:hover {
+  background: color-mix(in oklab, var(--primary) 88%, black);
+}
+
+button.ghost {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--foreground);
+}
+
+button.ghost:hover {
+  background: var(--accent);
+}
+
+/* --- signed-out card ---------------------------------------------------- */
+
+#sign-in-card {
+  align-self: center;
+  width: 100%;
+  max-width: 24rem;
+  margin: auto 0;
+  padding: 1.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--card);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 4%), 0 8px 24px rgb(0 0 0 / 4%);
+}
+
+#sign-in-card h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+#sign-in-card p {
+  margin: 0.25rem 0 1.25rem;
+  font-size: 0.9rem;
+  color: var(--muted-foreground);
+}
+
+#sign-in-card a {
+  display: block;
+  padding: 0.55rem 0.9rem;
+  border-radius: var(--radius-md);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-align: center;
+  text-decoration: none;
+}
+
+#sign-in-card a:hover {
+  background: color-mix(in oklab, var(--primary) 88%, black);
+}
+
+@media (max-width: 30rem) {
+  .container {
+    padding: 1.5rem 1rem 1rem;
+  }
+
+  /* Stack the status under the title instead of squeezing it into a column. */
+  header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4rem;
+  }
+
+  #status {
+    white-space: normal;
+  }
+
+  #log article.you,
+  #log article.bot {
+    max-width: 100%;
+  }
+}
