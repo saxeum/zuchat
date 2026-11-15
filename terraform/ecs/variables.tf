@@ -44,8 +44,20 @@ variable "google_client_id" {
 }
 
 variable "allowed_emails" {
-  description = "Comma-separated allowlist for sign-in."
+  description = "Comma-separated allowlist for sign-in. Empty admits any Google account."
   type        = string
+}
+
+variable "rate_limit_per_minute" {
+  description = "Chat requests allowed per signed-in user per minute (0 disables)."
+  type        = number
+  default     = 10
+}
+
+variable "rate_limit_global_per_minute" {
+  description = "Chat requests allowed across all users per minute (0 disables)."
+  type        = number
+  default     = 60
 }
 
 variable "image_tag" {

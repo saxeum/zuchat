@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import pytest
 from fastapi.testclient import TestClient
 
-from zuchat import deepseek
+from zuchat import deepseek, ratelimit
 from zuchat.app import create_app
 from zuchat.auth import current_user, is_allowed, oauth
 from zuchat.config import get_settings
@@ -24,12 +24,17 @@ TEST_API_KEY = "test-key"
 def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     """Hermetic client: fake key in the environment, dependency overridden."""
     monkeypatch.setenv("DEEPSEEK_API_KEY", TEST_API_KEY)
+    # Generous by default: only the tests that care about the quota should trip it.
+    monkeypatch.setenv("RATE_LIMIT_PER_MINUTE", "1000")
+    monkeypatch.setenv("RATE_LIMIT_GLOBAL_PER_MINUTE", "1000")
     get_settings.cache_clear()
+    ratelimit.get_limits.cache_clear()
     api.dependency_overrides[deepseek_api_key] = lambda: TEST_API_KEY
     api.dependency_overrides[current_user] = lambda: {"email": "test@example.com"}
     yield TestClient(api)
     api.dependency_overrides.clear()
     get_settings.cache_clear()
+    ratelimit.get_limits.cache_clear()
 
 
 def test_index(client: TestClient) -> None:
@@ -275,6 +280,99 @@ def test_stream_parses_provider_frames() -> None:
 
     # The parser is the part a live reply cannot cover in a unit test.
     assert list(deepseek._deltas(lines)) == ["hel", "lo"]  # noqa: SLF001
+
+
+def _set_limits(
+    monkeypatch: pytest.MonkeyPatch,
+    per_user: int,
+    everyone: int,
+) -> None:
+    monkeypatch.setenv("RATE_LIMIT_PER_MINUTE", str(per_user))
+    monkeypatch.setenv("RATE_LIMIT_GLOBAL_PER_MINUTE", str(everyone))
+    ratelimit.get_limits.cache_clear()
+
+
+def _fake_chat(_api_key: str, _message: str) -> str:
+    return "ok"
+
+
+def _fake_stream(_api_key: str, _message: str) -> Iterator[str]:
+    yield "ok"
+
+
+def test_chat_is_rate_limited_per_user(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_limits(monkeypatch, per_user=1, everyone=0)
+    monkeypatch.setattr(deepseek, "chat", _fake_chat)
+
+    first = client.post("/api/chat", json={"message": "one"})
+    second = client.post("/api/chat", json={"message": "two"})
+
+    assert first.status_code == 200
+    assert second.status_code == 429
+    assert int(second.headers["retry-after"]) >= 1
+    assert "too many requests" in second.json()["detail"]
+
+
+def test_stream_shares_the_chat_budget(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_limits(monkeypatch, per_user=1, everyone=0)
+    monkeypatch.setattr(deepseek, "chat", _fake_chat)
+    monkeypatch.setattr(deepseek, "stream", _fake_stream)
+
+    assert client.post("/api/chat", json={"message": "one"}).status_code == 200
+    # Same user, same minute: the streamed path spends from the same bucket.
+    assert (
+        client.post(
+            "/api/chat/stream",
+            json={"message": "two"},
+        ).status_code
+        == 429
+    )
+
+
+def test_the_shared_budget_caps_everyone(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_limits(monkeypatch, per_user=0, everyone=1)
+    monkeypatch.setattr(deepseek, "chat", _fake_chat)
+
+    assert client.post("/api/chat", json={"message": "one"}).status_code == 200
+
+    api.dependency_overrides[current_user] = lambda: {"email": "other@example.com"}
+    second = client.post("/api/chat", json={"message": "two"})
+
+    # A second account is under its own limit but the budget is spent.
+    assert second.status_code == 429
+
+
+def test_a_zero_limit_turns_the_limiter_off(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_limits(monkeypatch, per_user=0, everyone=0)
+    monkeypatch.setattr(deepseek, "chat", _fake_chat)
+
+    for _ in range(5):
+        assert client.post("/api/chat", json={"message": "hi"}).status_code == 200
+
+
+def test_limiter_frees_a_slot_after_the_window() -> None:
+    now = 0.0
+    limiter = ratelimit.Limiter(2, window=60.0, clock=lambda: now)
+
+    assert limiter.retry_after("a") == 0.0
+    assert limiter.retry_after("a") == 0.0
+    assert limiter.retry_after("a") == pytest.approx(60.0)
+    assert limiter.retry_after("b") == 0.0  # keys are independent
+
+    now = 60.0
+    assert limiter.retry_after("a") == 0.0
 
 
 def test_security_headers_present(client: TestClient) -> None:

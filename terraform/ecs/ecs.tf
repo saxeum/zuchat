@@ -27,6 +27,8 @@ module "ecs" {
             { name = "APP_BASE_URL", value = "${var.enable_https ? "https" : "http"}://${var.domain}" },
             { name = "GOOGLE_CLIENT_ID", value = var.google_client_id },
             { name = "ALLOWED_EMAILS", value = var.allowed_emails },
+            { name = "RATE_LIMIT_PER_MINUTE", value = tostring(var.rate_limit_per_minute) },
+            { name = "RATE_LIMIT_GLOBAL_PER_MINUTE", value = tostring(var.rate_limit_global_per_minute) },
             { name = "ENABLE_DOCS", value = "false" },
           ]
 

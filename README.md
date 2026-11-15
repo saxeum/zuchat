@@ -76,14 +76,21 @@ Full console walkthrough: [docs/google-oauth-setup.md](docs/google-oauth-setup.m
 
 Then open <http://localhost:8000/login>, sign in, and `/chat` accepts the
 session cookie. `ALLOWED_EMAILS` is the lock: leave it empty and *any* Google
-account can spend your DeepSeek credits; set it to your address and everyone
-else gets 403. `/logout` clears the session.
+account can chat, within the rate limits below; set it to your address and
+everyone else gets 403. `/logout` clears the session.
 
 ## Notes
 
 - The key is an environment variable inside the container: `DEEPSEEK_API_KEY`.
 - `Settings` requires it; the app refuses to start without it.
 - To use a different key file: `make up KEY_FILE=/path/to/file`.
+- The two chat routes are rate limited per signed-in user
+  (`RATE_LIMIT_PER_MINUTE`, default 10/min) and across all users
+  (`RATE_LIMIT_GLOBAL_PER_MINUTE`, default 60/min); 0 disables either. A caller
+  over the limit gets 429 with a `Retry-After`. The counters live in the
+  process, so they reset on deploy and are not shared between tasks.
+- `ALLOWED_EMAILS` empty (the default) admits any Google account; set it to
+  keep the door shut.
 
 ## License
 
@@ -98,5 +105,6 @@ MIT — see [LICENSE](LICENSE).
 | `src/zuchat/config.py` | settings (`deepseek_api_key`) |
 | `src/zuchat/main.py` | FastAPI app |
 | `src/zuchat/deepseek.py` | DeepSeek client (blocking and streaming) |
+| `src/zuchat/ratelimit.py` | per-user and shared chat budgets |
 | `src/zuchat/static/` | the page: HTML, JS, CSS, vendored fonts |
 | `scripts/chat.sh`, `scripts/smoke.sh` | HTTP helpers |

@@ -2,14 +2,15 @@
 
 import json
 import logging
+import math
 from collections.abc import Iterator  # noqa: TC003 - used at runtime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from zuchat import deepseek
+from zuchat import deepseek, ratelimit
 from zuchat.auth import current_user
 from zuchat.deps import deepseek_api_key
 
@@ -26,6 +27,25 @@ class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=4000)
 
 
+def chat_quota(user: Annotated[dict[str, str], Depends(current_user)]) -> None:
+    """Charge one chat request to the caller, then to the shared budget.
+
+    Per-user first: one noisy account must not be able to empty the budget
+    everyone shares. The counters live in this process, so they reset when the
+    task restarts.
+    """
+    limits = ratelimit.get_limits()
+    wait = limits.per_user.retry_after(user["email"])
+    if not wait:
+        wait = limits.everyone.retry_after(ratelimit.EVERYONE)
+    if wait:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="too many requests; try again shortly",
+            headers={"Retry-After": str(math.ceil(wait))},
+        )
+
+
 @router.get("/me")
 def me(user: Annotated[dict[str, str], Depends(current_user)]) -> dict[str, str]:
     """Who the session belongs to."""
@@ -39,7 +59,7 @@ def models(
     return deepseek.models(api_key)
 
 
-@router.post("/chat")
+@router.post("/chat", dependencies=[Depends(chat_quota)])
 def chat(
     request: ChatRequest,
     api_key: Annotated[str, Depends(deepseek_api_key)],
@@ -47,7 +67,7 @@ def chat(
     return {"reply": deepseek.chat(api_key, request.message)}
 
 
-@router.post("/chat/stream")
+@router.post("/chat/stream", dependencies=[Depends(chat_quota)])
 def chat_stream(
     request: ChatRequest,
     api_key: Annotated[str, Depends(deepseek_api_key)],

@@ -7,4 +7,8 @@ session_secret_arn       = "arn:aws:secretsmanager:ap-southeast-2:ACCOUNT:secret
 google_client_secret_arn = "arn:aws:secretsmanager:ap-southeast-2:ACCOUNT:secret:zuchat/google-secret-XXXXXX"
 
 google_client_id = "000000000000-xxxxxxxx.apps.googleusercontent.com"
-allowed_emails   = "you@example.com"
+allowed_emails   = "you@example.com"  # empty string admits any Google account
+
+# Optional; these are the defaults. 0 disables either limit.
+# rate_limit_per_minute        = 10
+# rate_limit_global_per_minute = 60
