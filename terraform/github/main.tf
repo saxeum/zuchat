@@ -49,6 +49,12 @@ locals {
   description = "FastAPI chat app backed by DeepSeek, behind Google OIDC, on AWS ECS via Terraform. Live at ${local.homepage} — any Google account can chat."
 }
 
+# The environment's reviewer list takes numeric user IDs, not logins, so the
+# login in terraform.tfvars is resolved here rather than duplicated by hand.
+data "github_user" "owner" {
+  username = var.owner
+}
+
 resource "github_repository" "repo" {
   name         = var.name
   description  = local.description
@@ -74,6 +80,9 @@ resource "github_repository" "repo" {
     "google-oidc",
     "terraform",
   ]
+
+  # Enabled by hand earlier; without this an apply switches it back off.
+  delete_branch_on_merge = true
 
   # Both free on a public repository, and both turn "no secret has ever been
   # near this" from an intention into an enforced property.
@@ -144,7 +153,7 @@ resource "github_repository_environment" "production" {
   # self-approval would mean nothing could ever deploy. The gate is that the
   # deployment has to be approved at all.
   reviewers {
-    users = [var.owner]
+    users = [tonumber(data.github_user.owner.id)]
   }
 
   deployment_branch_policy {
