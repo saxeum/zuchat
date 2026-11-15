@@ -14,6 +14,16 @@ class Settings(BaseSettings):
 
     deepseek_api_key: SecretStr
 
+    # Spend controls. The rate limits bound bursts; the token budgets bound the
+    # bill, because one long prompt can cost more than hundreds of short ones.
+    # 0 disables any individual control.
+    max_output_tokens: int = 1024
+    rate_limit_per_minute: int = 10
+    rate_limit_global_per_minute: int = 60
+    max_concurrent_per_user: int = 1
+    token_budget_per_day: int = 100_000
+    token_budget_global_per_day: int = 1_000_000
+
     @field_validator("deepseek_api_key")
     @classmethod
     def _strip_whitespace(cls, value: SecretStr) -> SecretStr:

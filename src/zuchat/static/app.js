@@ -11,6 +11,7 @@ const STATUS_MESSAGES = {
   401: "session expired — sign in again",
   403: "this account is not allowed",
   422: "that message is too long",
+  429: "too many requests — wait a moment",
   502: "the provider failed; try again",
   503: "the server is not ready yet",
 };

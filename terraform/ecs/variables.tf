@@ -44,8 +44,44 @@ variable "google_client_id" {
 }
 
 variable "allowed_emails" {
-  description = "Comma-separated allowlist for sign-in."
+  description = "Comma-separated allowlist for sign-in. Empty admits any Google account."
   type        = string
+}
+
+variable "rate_limit_per_minute" {
+  description = "Chat requests allowed per signed-in user per minute (0 disables)."
+  type        = number
+  default     = 10
+}
+
+variable "rate_limit_global_per_minute" {
+  description = "Chat requests allowed across all users per minute (0 disables)."
+  type        = number
+  default     = 60
+}
+
+variable "max_concurrent_per_user" {
+  description = "Replies allowed in flight per signed-in user (0 disables)."
+  type        = number
+  default     = 1
+}
+
+variable "max_output_tokens" {
+  description = "Cap on tokens in one reply, so no single request is unbounded."
+  type        = number
+  default     = 1024
+}
+
+variable "token_budget_per_day" {
+  description = "Tokens one user may spend per day, in UTC days (0 disables)."
+  type        = number
+  default     = 100000
+}
+
+variable "token_budget_global_per_day" {
+  description = "Tokens all users may spend per day, in UTC days (0 disables)."
+  type        = number
+  default     = 1000000
 }
 
 variable "image_tag" {

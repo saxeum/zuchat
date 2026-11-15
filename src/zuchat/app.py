@@ -8,15 +8,16 @@ from fastapi import FastAPI, Request
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.staticfiles import StaticFiles
 
-from zuchat import api_routes, auth_routes, ops_routes, pages
+from zuchat import api_routes, auth_routes, ops_routes, pages, ratelimit
 from zuchat.auth import app_base_url, session_secret
 from zuchat.config import get_settings
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-    """Fail fast: a task without the key should die, not serve 500s."""
+    """Fail fast: a task with broken config should die, not serve 500s."""
     get_settings()
+    ratelimit.get_limits()
     if not os.environ.get("SESSION_SECRET"):
         msg = "SESSION_SECRET is not set - start with `make up` (it loads the config)"
         raise RuntimeError(msg)
