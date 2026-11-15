@@ -42,19 +42,38 @@ variable "enable_branch_protection" {
   default     = false
 }
 
+locals {
+  # The public URL is the homepage in the About panel and part of the
+  # description, so it is written once.
+  homepage    = "https://zuchat.foonix.net"
+  description = "FastAPI chat app backed by DeepSeek, behind Google OIDC, on AWS ECS via Terraform. Live at ${local.homepage} — any Google account can chat."
+}
+
 resource "github_repository" "repo" {
-  name        = var.name
-  description = "A FastAPI chat service, containerised, with an ECS deployment path"
-  visibility  = "public"
-  has_issues  = true
-  has_wiki    = false
-  auto_init   = false
+  name         = var.name
+  description  = local.description
+  homepage_url = local.homepage
+  visibility   = "public"
+  has_issues   = true
+  has_wiki     = false
+  auto_init    = false
 
   # auto_init = false on purpose: the history here is the history of the
   # repository, and an initial README commit would have to be reconciled with
   # it before the first push.
 
-  topics = ["fastapi", "docker", "terraform", "aws", "ecs", "vault"]
+  # These match what the repository already carries; keeping them here means a
+  # manual `gh repo edit` cannot quietly survive as drift.
+  topics = [
+    "aws",
+    "chat",
+    "deepseek",
+    "docker",
+    "ecs",
+    "fastapi",
+    "google-oidc",
+    "terraform",
+  ]
 
   # Both free on a public repository, and both turn "no secret has ever been
   # near this" from an intention into an enforced property.
@@ -110,16 +129,26 @@ output "html_url" {
   value       = github_repository.repo.html_url
 }
 
-# The gate for Terraform apply: only master, only with a human approval.
+# The gate for Terraform apply: only master, and only once a human has approved
+# the deployment. This is the credential boundary, not just a UI pause: the
+# apply role's OIDC subject *is* this Environment.
 resource "github_repository_environment" "production" {
   repository  = github_repository.repo.name
   environment = "production"
+
+  # The only account here is an admin, so without this the reviewer requirement
+  # would be bypassed by the very person it is meant to hold.
+  can_admins_bypass = false
+
+  # `prevent_self_review` stays default (false): with one account, forbidding
+  # self-approval would mean nothing could ever deploy. The gate is that the
+  # deployment has to be approved at all.
+  reviewers {
+    users = [var.owner]
+  }
 
   deployment_branch_policy {
     protected_branches     = true
     custom_branch_policies = false
   }
-
-  # No required reviewers for now: the OIDC subject still needs this
-  # Environment, but deploys do not wait for a human.
 }
