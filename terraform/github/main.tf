@@ -34,7 +34,13 @@ variable "reviewers" {
     then ignored, so this is not tied to var.owner.
   EOT
   type        = list(string)
-  default     = []
+
+  # No default, on purpose: an absent or empty list would remove the deploy
+  # gate, and that is the one failure this setting exists to prevent.
+  validation {
+    condition     = length(var.reviewers) > 0
+    error_message = "At least one reviewer is required; an empty list removes the deploy gate."
+  }
 }
 
 variable "default_branch" {
@@ -163,14 +169,8 @@ resource "github_repository_environment" "production" {
   # `prevent_self_review` stays default (false): with one account, forbidding
   # self-approval would mean nothing could ever deploy. The gate is that the
   # deployment has to be approved at all.
-  #
-  # Conditional because an empty list would mean "no reviewers" rather than an
-  # error, and a silent lack of a gate is the worst outcome here.
-  dynamic "reviewers" {
-    for_each = length(var.reviewers) > 0 ? [1] : []
-    content {
-      users = [for user in data.github_user.reviewers : tonumber(user.id)]
-    }
+  reviewers {
+    users = [for user in data.github_user.reviewers : tonumber(user.id)]
   }
 
   deployment_branch_policy {
