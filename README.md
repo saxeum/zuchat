@@ -87,8 +87,8 @@ everyone else gets 403. `/logout` clears the session.
 - The key is an environment variable inside the container: `DEEPSEEK_API_KEY`.
 - `Settings` requires it; the app refuses to start without it.
 - To use a different key file: `make up KEY_FILE=/path/to/file`.
-- Chat is bounded on four axes. All are environment variables, all can be set
-  to 0 to disable that control:
+- Chat is bounded by these environment variables; `0` disables any of the
+  counters:
 
   | Variable | Default | Bounds |
   | --- | --- | --- |
@@ -98,6 +98,7 @@ everyone else gets 403. `/logout` clears the session.
   | `MAX_CONCURRENT_TOTAL` | `8` | replies in flight across all users |
   | `TOKEN_BUDGET_PER_DAY` | `100000` | tokens per user per UTC day |
   | `TOKEN_BUDGET_GLOBAL_PER_DAY` | `1000000` | tokens across all users per UTC day |
+  | `MAX_BODY_BYTES` | `65536` | bytes in one request body |
 
   Request counts catch scripts; the token budgets catch the bill, because one
   long prompt costs more than hundreds of short ones. `MAX_OUTPUT_TOKENS`
@@ -105,7 +106,9 @@ everyone else gets 403. `/logout` clears the session.
   what DeepSeek reports in `usage`, estimated from the text only when a stream
   ends without its usage frame. Over any limit returns 429 with `Retry-After`.
   The counters live in the process, so they reset on deploy and are not shared
-  between tasks.
+  between tasks. `MAX_BODY_BYTES` is the exception: it is enforced in front of
+  authentication and answers 413, so an anonymous caller cannot make the task
+  parse a large body.
 - Session cookies last one day (`SESSION_MAX_AGE_SECONDS`, default `86400`).
   They are signed but not encrypted, and there is no server-side record, so a
   copy of a cookie stays valid until it expires: signing out clears the browser's

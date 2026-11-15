@@ -8,7 +8,7 @@ from fastapi import FastAPI, Request
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.staticfiles import StaticFiles
 
-from zuchat import api_routes, auth_routes, ops_routes, pages, ratelimit
+from zuchat import api_routes, auth_routes, bodylimit, ops_routes, pages, ratelimit
 from zuchat.auth import app_base_url, session_secret
 from zuchat.config import get_settings
 
@@ -45,6 +45,14 @@ def create_app() -> FastAPI:
         # exposure window. Short by default; existing cookies older than this
         # are rejected on their next request.
         max_age=int(os.environ.get("SESSION_MAX_AGE_SECONDS", "86400")),
+    )
+    # Ahead of session and auth handling: an anonymous caller must not be able
+    # to make the task parse a large body (see bodylimit).
+    app.add_middleware(
+        bodylimit.BodyLimit,
+        max_bytes=int(
+            os.environ.get("MAX_BODY_BYTES", str(bodylimit.MAX_BODY_BYTES)),
+        ),
     )
     app.mount("/static", StaticFiles(directory=pages.STATIC_DIR), name="static")
     app.include_router(pages.router)

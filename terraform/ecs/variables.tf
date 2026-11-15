@@ -78,6 +78,12 @@ variable "session_max_age_seconds" {
   default     = 86400
 }
 
+variable "max_body_bytes" {
+  description = "Largest accepted request body, in bytes (0 disables the check)."
+  type        = number
+  default     = 65536
+}
+
 variable "max_output_tokens" {
   description = "Cap on tokens in one reply, so no single request is unbounded."
   type        = number
