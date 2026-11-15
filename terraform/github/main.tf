@@ -42,19 +42,38 @@ variable "enable_branch_protection" {
   default     = false
 }
 
+locals {
+  # The public URL is the homepage in the About panel and part of the
+  # description, so it is written once.
+  homepage    = "https://zuchat.foonix.net"
+  description = "FastAPI chat app backed by DeepSeek, behind Google OIDC, on AWS ECS via Terraform. Live at ${local.homepage} — any Google account can chat."
+}
+
 resource "github_repository" "repo" {
-  name        = var.name
-  description = "A FastAPI chat service, containerised, with an ECS deployment path"
-  visibility  = "public"
-  has_issues  = true
-  has_wiki    = false
-  auto_init   = false
+  name         = var.name
+  description  = local.description
+  homepage_url = local.homepage
+  visibility   = "public"
+  has_issues   = true
+  has_wiki     = false
+  auto_init    = false
 
   # auto_init = false on purpose: the history here is the history of the
   # repository, and an initial README commit would have to be reconciled with
   # it before the first push.
 
-  topics = ["fastapi", "docker", "terraform", "aws", "ecs", "vault"]
+  # These match what the repository already carries; keeping them here means a
+  # manual `gh repo edit` cannot quietly survive as drift.
+  topics = [
+    "aws",
+    "chat",
+    "deepseek",
+    "docker",
+    "ecs",
+    "fastapi",
+    "google-oidc",
+    "terraform",
+  ]
 
   # Both free on a public repository, and both turn "no secret has ever been
   # near this" from an intention into an enforced property.
