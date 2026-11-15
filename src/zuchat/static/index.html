@@ -3,33 +3,52 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>zuchat - kale</title>
-    <link rel="stylesheet" href="/static/style.css" />
+    <meta name="color-scheme" content="light dark" />
+    <title>zuchat</title>
+    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
+    <link
+      rel="preload"
+      href="/static/fonts/geist-latin-wght-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link rel="stylesheet" href="/static/theme.css" />
+    <link rel="stylesheet" href="/static/app.css" />
   </head>
   <body>
-    <header>
-      <h1>zuchat and eat more kale</h1>
-      <div id="status">checking…</div>
-    </header>
+    <main class="container">
+      <header>
+        <div>
+          <h1>zuchat</h1>
+          <p>A FastAPI chat API behind Google OIDC, deployed to AWS ECS by Terraform.</p>
+        </div>
+        <nav id="status">checking…</nav>
+      </header>
 
-    <main>
-      <p id="intro" hidden>
-        A FastAPI chat service behind Google OIDC, deployed to AWS ECS by Terraform.
-        Sign in with Google to chat.
-      </p>
-
-      <ol id="log" aria-live="polite"></ol>
+      <section id="log" aria-live="polite" hidden></section>
 
       <form id="composer" hidden>
+        <label for="message">Your question</label>
         <textarea
           id="message"
+          name="message"
           rows="2"
           placeholder="Ask something… (⏎ to send, ⇧⏎ for a new line)"
           required
         ></textarea>
+        <div class="row">
+          <button type="button" id="new" class="ghost">new conversation</button>
+          <button type="submit">send</button>
+        </div>
       </form>
-    </main>
 
+      <article id="sign-in-card" hidden>
+        <h2>Sign in</h2>
+        <p>Use an allowlisted Google account to chat.</p>
+        <a href="/login">Sign in with Google</a>
+      </article>
+    </main>
     <script src="/static/app.js"></script>
   </body>
 </html>

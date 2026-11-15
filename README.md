@@ -46,6 +46,7 @@ make down
 | `GET /ready` | readiness: 503 until the API key is configured |
 | `GET /api/models` | DeepSeek model list (auth) |
 | `POST /api/chat` | `{"message": "..."}` → `{"reply": "..."}` (auth) |
+| `POST /api/chat/stream` | same body, server-sent events: `data: {"text": "..."}` frames, then `data: [DONE]` (auth) |
 
 ## Authentication
 
@@ -96,5 +97,6 @@ MIT — see [LICENSE](LICENSE).
 | `Dockerfile` | app image |
 | `src/zuchat/config.py` | settings (`deepseek_api_key`) |
 | `src/zuchat/main.py` | FastAPI app |
-| `src/zuchat/deepseek.py` | DeepSeek client |
+| `src/zuchat/deepseek.py` | DeepSeek client (blocking and streaming) |
+| `src/zuchat/static/` | the page: HTML, JS, CSS, vendored fonts |
 | `scripts/chat.sh`, `scripts/smoke.sh` | HTTP helpers |
