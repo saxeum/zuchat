@@ -106,6 +106,10 @@ everyone else gets 403. `/logout` clears the session.
   ends without its usage frame. Over any limit returns 429 with `Retry-After`.
   The counters live in the process, so they reset on deploy and are not shared
   between tasks.
+- Session cookies last one day (`SESSION_MAX_AGE_SECONDS`, default `86400`).
+  They are signed but not encrypted, and there is no server-side record, so a
+  copy of a cookie stays valid until it expires: signing out clears the browser's
+  copy only. Rotating `SESSION_SECRET` is the only way to invalidate them all.
 - `ALLOWED_EMAILS` empty (the default) admits any Google account; set it to
   keep the door shut.
 

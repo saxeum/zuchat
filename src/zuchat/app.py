@@ -41,6 +41,10 @@ def create_app() -> FastAPI:
         secret_key=session_secret(),
         same_site="lax",
         https_only=app_base_url().startswith("https"),
+        # A signed cookie cannot be revoked (see #64), so its lifetime is the
+        # exposure window. Short by default; existing cookies older than this
+        # are rejected on their next request.
+        max_age=int(os.environ.get("SESSION_MAX_AGE_SECONDS", "86400")),
     )
     app.mount("/static", StaticFiles(directory=pages.STATIC_DIR), name="static")
     app.include_router(pages.router)
@@ -56,7 +60,8 @@ def create_app() -> FastAPI:
         # /auth carries an OAuth code in the query string: never leak it in a Referer.
         response.headers.setdefault("Referrer-Policy", "no-referrer")
         response.headers.setdefault(
-            "Permissions-Policy", "geolocation=(), microphone=(), camera=()",
+            "Permissions-Policy",
+            "geolocation=(), microphone=(), camera=()",
         )
         response.headers.setdefault(
             "Content-Security-Policy",
@@ -64,7 +69,8 @@ def create_app() -> FastAPI:
         )
         if app_base_url().startswith("https"):
             response.headers.setdefault(
-                "Strict-Transport-Security", "max-age=31536000; includeSubDomains",
+                "Strict-Transport-Security",
+                "max-age=31536000; includeSubDomains",
             )
         return response
 

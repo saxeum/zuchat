@@ -72,6 +72,12 @@ variable "max_concurrent_total" {
   default     = 8
 }
 
+variable "session_max_age_seconds" {
+  description = "Lifetime of the signed session cookie, in seconds."
+  type        = number
+  default     = 86400
+}
+
 variable "max_output_tokens" {
   description = "Cap on tokens in one reply, so no single request is unbounded."
   type        = number
