@@ -18,7 +18,13 @@ permissions:
 
 jobs:
   apply:
-    if: github.event.workflow_run.conclusion == 'success'
+    # `ci` runs on pull requests too, and `branches:` filters on the *head branch name*, not on the
+    # event. A pull request whose head branch happened to be called `master` would satisfy that
+    # filter. Requiring the triggering run to be a push closes the class: this job then only ever
+    # runs for a run the repository itself made on a merge to `master`.
+    if: >-
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     # The OIDC subject is repo:...:environment:production, and that Environment
     # requires a reviewer (defined in terraform/github), so the approval is part
