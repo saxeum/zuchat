@@ -1,389 +1,495 @@
-# Decomposing zuchat into a platform
+# zuchat as an agent platform
 
-**A proposal for independent team ownership, lower coupling, and safer AI-assisted change.**
+**What product teams own, what the platform hides, and why splitting repositories is the last step.**
 
-Status: draft for review · Date: 2026-11-20 · Scope: repository and deploy topology, not product features
-
----
-
-## 1. The recommendation in one page
-
-This repository is **one deployable: 1,014 lines of Python, 949 lines of UI, 933 lines of Terraform,
-one image, one ECS task, one load balancer, one IAM trust anchor.** Nothing in it is currently
-preventing a team from working — but everything in it makes a *second* team, or a second deploy
-unit, expensive to add.
-
-The tempting move is to split it into a service per box on the architecture diagram. **That is the
-wrong first move here.** At this size it buys autonomy the organisation does not yet need, and pays
-for it with distributed auth, contract drift, six CI pipelines, and enough operational surface that
-the platform work becomes the product.
-
-**Recommended shape: a federated platform reached in stages.** Extract the three genuinely
-cross-cutting things first, leave the product in one repo, and split the product only when a named
-trigger fires.
-
-| Stage | What moves | New repo | Why this, why now |
-| --- | --- | --- | --- |
-| **0. Seams in place** | Per-service settings, provider interface, shared spend store, contract tests | none | Removes the coupling that would otherwise be copied into every new repo |
-| **1. Platform** | All Terraform, reusable CI, service template, repo-as-code | `zuchat-platform` | Infra and app currently share one commit and one credential. Highest risk, lowest product risk to fix |
-| **2. Contracts** | OpenAPI + SSE + claims schemas, generated clients, `oasdiff` gate | `zuchat-contracts` | A split without this is a split into drift. Makes the boundary machine-checkable |
-| **3. AI gateway** | Provider adapters, keys, model allowlist, moderation, spend + audit | `zuchat-model-gateway` | The single biggest AI-safety win: one egress point, one key, one audit trail, per-team budgets |
-| **4. Identity** | OIDC login, session → JWT, allowlist | `zuchat-identity` | Only when a *second* service must authenticate users |
-| **5. Web and chat** | Static UI to CloudFront/S3; chat orchestration + SSE | `zuchat-web`, `zuchat-chat` | Only when UI or chat cadence diverges from the API |
-
-Stages 1–3 give roughly **80% of the safety and ownership benefit for 20% of the cost**. Stages 4–5
-are only justified by evidence, listed as triggers in [§7](#7-when-to-split--and-when-not-to).
-
-**What it buys:** an agent or engineer touching the UI cannot change production IAM; no app service
-holds the provider key; a breaking wire change fails CI instead of production; each team owns a repo
-whose full contents fit in a review.
-
-**What it costs:** roughly **$20–60/month** more AWS (the number is not the issue) and, more
-honestly, **0.5–1 engineer-day per month per extra repo** — 2–3 days after Stage 3, up to 6 with
-everything split. Every split also makes one atomic change into two ordered pull requests. That is a real
-regression for AI-assisted work, and the reason to split only on a trigger.
-
-**What must not change:** the human merges. Every proposal here keeps merge rights with people,
-keeps production apply behind a reviewed environment, and gives agents no credential that can
-reach production. A platform that makes deployment self-service without keeping that boundary
-would be a downgrade in safety, however tidy the repositories look.
+Status: second draft · Date: 2026-11-20 · Replaces the repo-split-first recommendation
 
 ---
 
-## 2. What exists today
+## 0. What changed, and why
 
-Measured on `bf8fbf1` (origin/master, 2026-11-20):
+The first draft answered "how do we split this into repos". That is a **delivery platform**: teams
+deploy independently, but every team still has to understand the runtime to ship anything.
 
-| Dimension | Today | Consequence |
+It does not answer the real problem. A product team planning a new agent — or a new UI that
+consumes agents — still has to know how the provider is called, how streaming frames are shaped,
+where quotas live, how sessions are signed, and how a model choice reaches production. **Splitting
+that into more repositories multiplies the number of things they must understand.**
+
+The correction, in one line:
+
+> **A platform is the set of things a product team does not need to know.**
+
+Repositories are a consequence of team boundaries. They are not the boundary itself. **The boundary
+is a contract**: a declarative agent definition, one run API, one SDK. Until that exists, no amount
+of repo splitting produces a platform — it produces a distributed monolith with more checkout
+steps.
+
+The order therefore inverts: build the agent abstraction and its contracts **inside the current
+repo**, prove it with a team that did not write it, and split repositories only where teams and
+cadence actually differ.
+
+---
+
+## 1. The test: can a new team ship without reading the core?
+
+### 1.1 What adding an agent costs today
+
+There is no agent in the codebase. `grep -ri agent src/zuchat` returns **zero** matches. What exists
+is a single chat call:
+
+- `deepseek.py:49` sends exactly `messages: [{"role": "user", "content": message}]` — no system
+  prompt, no tools, no history.
+- `api_routes.py:29` accepts `message: str` (max 4,000 chars) — the API surface is a string, not a
+  typed agent input.
+- `static/app.js:355` parses the SSE stream itself, against one hardcoded endpoint.
+
+So "ship a new agent" today means changing all of this:
+
+| # | File | Why it must change |
 | --- | --- | --- |
-| Deployables | 1 | Every change ships as one unit |
-| Python in `src/` | 1,014 lines, 13 modules | Small enough to read whole; no internal package boundaries |
-| Tests | 737 lines, 49 tests, one file | App-level integration tests; no boundary or contract tests |
-| UI | 949 lines static, no build step | Served by the app; same-origin API calls |
-| Terraform | 933 lines, 3 roots (`bootstrap`, `ecs`, `github`) | Lives with the app; applies from the app repo's CI |
-| Runtime | 1 ECS service, 1 task, 1 ALB target group, no NAT | In-process state is safe only because there is exactly one task |
-| Repos | 1 | GitHub permissions, secrets and CI trust are repo-wide |
-| Spend controls | In-process counters | Reset on deploy; not shared; break with a second task |
-| Provider key | `DEEPSEEK_API_KEY` in the app task | Every service would inherit an LLM credential |
+| 1 | `api_routes.py` | new route, or a branch inside the chat handler, plus quota wiring |
+| 2 | `deepseek.py` | system prompt / tools / model choice / message shape |
+| 3 | `config.py` | model, limits and budget settings |
+| 4 | `ratelimit.py` | budget keys, if the agent is metered differently |
+| 5 | `static/app.js` + HTML/CSS | the UI, its own stream parser, its own error handling |
+| 6 | `terraform/ecs/ecs.tf` + `variables.tf` | every new settings value as a task environment entry |
+| 7 | `tests/test_main.py` | app-level tests that import the whole app |
+| 8 | `app.py` | router registration, if it is a new module |
 
-### 2.1 The coupling that actually exists
+**Eight files, five subsystems, one infra apply.** Every product team must hold the whole runtime in
+its head, and every change is a merge conflict with every other team. That is the tangle.
 
-These are the specific couplings the proposals have to address. Each is a fact about a file, not a
-feeling about architecture.
+[![Current state: one repository, one deployable](diagrams/01-current-state.svg)](diagrams/01-current-state.svg)
 
-| # | Coupling | Evidence | What it blocks | Severity |
-| --- | --- | --- | --- | --- |
-| C1 | One composition root imports every feature | `app.py:10-13`, `app.py:58-61` | Any module change edits a shared file; no module can be lifted out without editing it | Low |
-| C2 | Config is global and the LLM key is **required** | `config.py:15`; `app.py:19` calls `get_settings()`; `ops_routes.py:30` | Even a service that only does auth or health must carry `DEEPSEEK_API_KEY` | **High** |
-| C3 | Spend policy, concurrency and provider I/O share a handler | `api_routes.py:40-169` | Cannot change provider or quota policy without touching the HTTP surface | Medium |
-| C4 | Counters are process-local | `ratelimit.py:10-12`, `ratelimit.py:204` (`lru_cache`) | A second task, or a second service, silently breaks every budget | **High** |
-| C5 | Auth and app share a signed cookie + `SESSION_SECRET` | `auth.py:53-63`, `app.py:39-46` | A new service must share a bearer signing key, or cannot identify users | **High** |
-| C6 | UI hardcodes same-origin `/api` calls | `static/app.js:308`, `static/app.js:355` | UI cannot move origin without CORS, credential and CSRF work | Medium |
-| C7 | Infra applies from the app repo on every master push | `.github/workflows/terraform-apply.yml`; `terraform/ecs/*` | An app commit can change production infrastructure; app repo needs AWS write | **High** |
-| C8 | Repo identity is hardcoded in the IAM trust anchor | `terraform/ecs/github_actions.tf:11-26` | A new repo cannot deploy without editing the one file that defines trust | **High** |
-| C9 | One mutable `:latest` tag is pushed alongside the SHA tag | `Makefile:push`; `terraform/ecs/main.tf:26` | Rollback and "what is running" are ambiguous; digest pinning is impossible | Medium |
-| C10 | Tests are app-level only | `tests/test_main.py:1-52` | A split has no safety net; every extraction is unverified until production | **High** |
+### 1.2 Why splitting repos does not fix it
 
-C2, C4, C5, C7, C8 and C10 are the ones that make a naive split fail. They are also fixable *inside
-the current repo*, which is why Stage 0 exists.
+After the split in the previous draft, the same team must now also understand: which repo the
+change belongs in, how the contract repo versions, whether gateway and UI pins agree, and how two
+pull requests order. The knowledge requirement went *up*, and the number of people who can break
+each other went *up* with it.
 
----
+The tangle is not caused by co-location. It is caused by **the absence of an abstraction**: the
+unit of extension today is "edit the core", so the core must be understood to extend it.
 
-## 3. What "platform" should mean here
+### 1.3 The test this report is written against
 
-A platform is not a repository count. It is a **paved road** that lets a team ship a service without
-designing its build, deploy, identity, observability or repo settings. Five capabilities, each small:
+> A team that has never seen this codebase ships an agent and its UI, touching **zero files in the
+> platform repository**, and can name the three things it had to learn: the manifest schema, the run
+> event stream, and how to get a user token.
 
-1. **A service template** — `zuchat-platform/templates/service`: Dockerfile, `/health`, `/ready`,
-   `/metrics`, OpenTelemetry, `CODEOWNERS`, repo-local `AGENTS.md`, CI that calls a shared workflow.
-2. **Reusable CI** — one pinned workflow (`python-service.yml@<sha>`): lock check, lint, tests,
-   image build, SBOM, scan, sign, push by digest. A security fix lands once, not per repo.
-3. **Terraform modules, not Terraform forks** — `modules/service` (ECS service, target-group rule,
-   log group, task role with no secrets by default, alarms), `modules/environment` (VPC, cluster,
-   shared ALB), `modules/repo` (branch protection, environments, secret scanning). Environment
-   roots (`envs/dev`, `envs/prod`) pin module versions and image digests.
-4. **A contract registry** — OpenAPI, SSE frame schema, identity claims. Generated clients;
-   breaking-change detection in CI.
-5. **An ownership registry** — one `services.yaml` (name, owner, repo, URL, SLO, on-call) that
-   generates dashboards, alarms and routing. One file, machine-readable, no prose to rot.
+Two measurements, both cheap to run every quarter:
 
-What it must not mean: a platform team that reviews every change, a shared `common` library with one
-consumer, or a repo per Python package. Those are the failure modes, not the goal.
+| Measure | Today | Target |
+| --- | --- | --- |
+| Platform source files a new team must read | ~13 (the package) + Terraform | **0** |
+| Time to first agent, including UI | 1–2 weeks of core work | **1 day** |
+| Time for the Nth agent | still 1–2 weeks | **~1 hour** |
+| Files touched by an agent change | 8, across 5 subsystems | **3, in one repo** (manifest, prompt, evals) |
+| Blast radius of a bad agent change | the whole service | one agent version, canary and kill switch |
+
+If the "files read" number is not zero, the platform leaked. That is the whole design goal.
 
 ---
 
-## 4. Proposal A — Three seams, four repos (recommended first step)
+## 2. The unit of work: an agent is a versioned artifact
 
-Extract only what is cross-cutting; keep the product together.
+An agent is **data plus a prompt plus evals**, not a Python module. It is declared, validated,
+versioned and published; the platform executes it.
+
+```yaml
+# agents/support-triage/agent.yaml
+apiVersion: zuchat/v1
+kind: Agent
+metadata:
+  name: support-triage
+  owner: team-support
+  labels:
+    surface: web            # which UI catalogs may show it
+    tier: public
+spec:
+  model:
+    alias: standard         # platform maps alias -> provider + model
+    maxOutputTokens: 800
+  instructions: prompts/triage.md
+  input:
+    schema: schemas/triage.input.json
+  output:
+    schema: schemas/triage.output.json
+    format: json
+  tools:
+    - name: kb.search
+      from: tool://kb
+      timeoutMs: 3000
+      maxCalls: 3
+    - name: ticket.read
+      from: tool://tickets
+      timeoutMs: 2000
+      maxCalls: 1
+  budget:
+    perRunTokens: 8000
+    dailyTokens: 500000
+  safety:
+    profile: public-chat
+    redact: [email, phone]
+  evals:
+    suite: evals/
+    minPassRate: 0.95
+```
+
+**Why each field is data, not code**
+
+| Field | The team decides | The platform does |
+| --- | --- | --- |
+| `model.alias` | how much reasoning it needs (`fast`, `standard`, `reasoner`) | provider, model id, key, fallback, price, rate limits |
+| `instructions` | the prompt | loads it, versions it with the manifest, traces it |
+| `input` / `output` schema | the shape of its input and result | validation, typed SDK, schema-driven UI |
+| `tools` | which capabilities it may use | sandbox, allowlist, timeouts, call caps, credentials |
+| `budget` | its spend envelope | enforcement across tasks, per user/team/agent, audit |
+| `safety` | which profile applies | redaction, moderation, fail-open/closed policy |
+| `evals` | the quality bar | runner, fixtures, pass-rate gate before publish |
+
+**Version and channel.** Every publish is immutable: `support-triage@1.4.0`. Consumers pin a version
+or a channel (`stable`, `canary`). A rollback is a pin change, not a redeploy — which is what makes
+a bad prompt a five-minute incident instead of an afternoon.
+
+**What is deliberately absent.** No arbitrary Python, no loops, no custom retrieval in the
+manifest. The only extension points are **tools** (a service the platform calls) and **schemas**.
+That is a real limitation, taken on purpose: every escape hatch is a piece of the tangle coming
+back. If an agent needs behaviour that is neither a prompt nor a tool, it is a product decision to
+add a new tool, owned by the platform.
+
+---
+
+## 3. Two contracts: the entire product surface
+
+Everything a product team touches is one of these. Nothing else is public.
+
+### 3.1 Publish (control)
+
+```
+agent.yaml + prompts/ + schemas/ + evals/  ->  validate -> eval gate -> registry (immutable)
+```
+
+Validation and evals run in the team's CI through a pinned, reusable workflow. Publishing is a
+merge by a human, and the platform records who published which version, with the eval report
+attached. A manifest that fails its own evals cannot be published.
+
+### 3.2 Run (data)
+
+```
+POST /v1/agents/{name}/runs
+{ "input": { ... }, "version": "stable", "stream": true }
+```
+
+| Event | Payload | Why a UI needs it |
+| --- | --- | --- |
+| `run.started` | `runId, agent, version, traceId` | show provenance, start a timer |
+| `output.delta` | `text` | stream text |
+| `tool.call` | `callId, name, argsSummary` | show "searching knowledge base…" |
+| `tool.result` | `callId, status, ms` | show failure without guessing |
+| `output.final` | `content` or structured JSON | render the validated result |
+| `run.completed` | `usage, cost, finishReason` | budgets, usage display |
+| `run.failed` | `code, retryable` | retry or explain |
+
+All frames are additive-only and versioned. One generated client speaks them; a UI never parses
+SSE by hand, and never needs a new endpoint when an agent is added.
+
+### 3.3 Discovery: how a *new UI* consumes agents it has never seen
+
+`GET /v1/agents?label=surface:web` returns published manifests with their JSON Schemas. That is
+what makes the second half of the problem tractable:
+
+```ts
+const agents = await client.agents.list({ label: "surface:web" });
+
+// a catalog-driven page renders an input form from input.schema,
+// then streams the run; adding an agent adds no UI code
+const run = client.runs.stream({ agent: "support-triage", version: "stable", input });
+for await (const ev of run) {
+  if (ev.type === "output.delta") append(ev.text);
+  if (ev.type === "tool.call") showTool(ev.name, ev.status);
+  if (ev.type === "output.final") render(ev.content);
+}
+```
+
+Two kinds of consumption, one contract:
+
+- **Catalog-driven UI** — lists agents by label, renders inputs from schema. A new agent appears in
+  an existing surface with zero UI changes. This is what internal tools and admin pages should be.
+- **Bespoke UI** — a product surface uses the SDK directly for layout and interaction, but still
+  gets streaming, retries, tool status and errors from the same client.
+
+Both stop at the same boundary. Neither imports platform code.
+
+---
+
+## 4. What the platform owns
+
+[![What a team owns and what it never needs to know](diagrams/05-abstraction-layers.svg)](diagrams/05-abstraction-layers.svg)
+
+The red band in that diagram is the actual deliverable. Every item below it is a thing a product
+team stops learning.
+
+| Capability | Team stops doing | Platform guarantees |
+| --- | --- | --- |
+| Model access | picking providers, holding keys, handling their errors | aliases, keys, fallback, price, quota |
+| Streaming | SSE framing, heartbeats, disconnect handling, backpressure | typed event stream, cancellation, resume semantics |
+| Tools | writing HTTP clients, retries, credential plumbing | typed registry, sandbox, allowlist, timeouts, call caps |
+| State | owning a conversation store, idempotency | run log, optional session store, replay |
+| Spend | counting tokens, implementing budgets | per user/team/agent budgets, shared across tasks, audit |
+| Identity | cookie/JWT verification, service auth | user token claims, workload identity for tool calls |
+| Quality | bespoke test harnesses per agent | eval fixtures, pass-rate gate, regression reports |
+| Deploy | Dockerfiles, Terraform, task sizes, scaling | publish, canary, rollback, kill switch |
+| Observability | instrumenting traces and dashboards | one trace per run, spans per model/tool call, per-agent SLOs |
+| UI plumbing | hand-rolled stream parsers and error states | SDK + streaming hooks + schema renderer |
+
+[![Control plane and data plane](diagrams/06-control-data-plane.svg)](diagrams/06-control-data-plane.svg)
+
+Two planes, deliberately separate:
+
+- **Control plane** — git manifests, validation, the eval gate, the immutable registry, compiled
+  policy (budgets, safety profile, tool allowlist). It changes rarely, and it is where governance
+  lives.
+- **Data plane** — the run gateway, orchestrator loop, model router, tool executor, run log. It
+  changes often and must be boring. It reads a pinned version and policy; it never writes them.
+
+That split is what lets a product team move fast without being able to change a budget ceiling, a
+model allowlist, or a safety profile.
+
+---
+
+## 5. Repositories follow teams, not layers
 
 [![Target repository map](diagrams/02-target-repos.svg)](diagrams/02-target-repos.svg)
 
-| Repo | Owns | Runtime | Holds credentials |
+| Repo | Contains | Owner | Why it is a repo |
 | --- | --- | --- | --- |
-| `zuchat-app` (today's repo, renamed) | UI, auth, chat API, quota policy | 1 ECS service | No AWS write, no provider key after Stage 3 |
-| `zuchat-platform` | Terraform modules + env roots, reusable CI, templates, repo-as-code | none | **Only** repo with an AWS apply role |
-| `zuchat-contracts` | OpenAPI, SSE schema, claims, generated clients, contract tests | published artifact | none |
-| `zuchat-model-gateway` | Provider adapters, keys, allowlist, moderation, budgets, audit | 1 ECS service (or Lambda) | Provider key only |
+| `zuchat-platform` | run gateway, orchestrator, model router, tool executor, registry, infra modules | platform | the only repo with cloud credentials and provider keys |
+| `zuchat-sdk` | manifest JSON Schema, event schemas, generated TS/Python clients, React hooks | platform + DX | versioned, published; every product repo depends on it |
+| `agents-<team>` | `agent.yaml`, prompts, input/output schemas, evals | each product team | separate permissions and on-call, when that is true |
+| `web-<surface>` | a product UI, built on the SDK | product/frontend | separate release cadence, when that is true |
 
-**Why this order.** Platform first removes the shared-commit/shared-credential problem and is
-invisible to users. Contracts second is the precondition for any later split — without it, Stage 3
-and beyond create drift. Gateway third delivers the AI-safety controls while there is still only
-one product team to coordinate with.
+**The rule that keeps it a platform: features are directories, teams are repositories.**
 
-**Tradeoffs.**
+Adding an agent is a pull request to a manifest directory in a repo the team already owns. It is
+not a new repository, not a new service, not a Terraform change. Repository count should grow with
+**teams that need isolation**, never with features.
 
-- *For:* four repos, each with one reason to change; prod credentials in exactly one place; one AI
-  egress point; a real contract boundary; ~1 week of infra work, no user-visible change.
-- *Against:* the UI, auth and chat still release together — a frontend team would still wait on the
-  API. Quota policy still lives in the app, though its state is now shared. Two services add one
-  network hop and one more thing to page on.
-- *Reversibility:* high. Each repo can be merged back if the boundary proves wrong; contracts and
-  the gateway can be in-process libraries first.
+That also corrects the previous draft's "one repo per seam". Identity, contracts and infra do not
+each need a repo:
 
----
-
-## 5. Proposal B — Federated platform (the destination, on triggers)
-
-The full split: six repos, four deploy units, one shared ALB with host/path rules.
-
-[![Runtime and trust boundaries](diagrams/03-runtime-and-trust.svg)](diagrams/03-runtime-and-trust.svg)
-
-| Repo | Deploy unit | Release cadence | Owner | Trigger to create |
-| --- | --- | --- | --- | --- |
-| `zuchat-web` | CloudFront + S3 | daily | Frontend | UI cadence diverges, or a frontend team exists |
-| `zuchat-identity` | ECS service, `/login` `/auth` `/logout` | rarely | Security | A second service must authenticate users |
-| `zuchat-chat` | ECS service, `/api/chat*` | daily | Product | Chat must scale or release independently |
-| `zuchat-model-gateway` | ECS/Lambda, internal only | weekly | AI platform | Second AI feature, audit requirement, or key consolidation |
-| `zuchat-contracts` | none (artifact) | with providers | Platform + API reps | The second deploy unit |
-| `zuchat-platform` | none (Terraform) | with infra change | Platform | Now |
-
-**Rules that make it work:**
-
-- **One direction of dependency.** Web → chat → gateway. Identity is called by web only; services
-  verify a JWT via JWKS instead of sharing `SESSION_SECRET`. No service imports another's code.
-- **Contracts are additive.** SSE frame kinds are never removed, only added; breaking HTTP changes
-  mean `/v2`; `oasdiff breaking` runs in every consumer repo.
-- **One ALB, many target groups.** No ALB per service: a second ALB is ~$25/month and another TLS
-  and DNS surface for no isolation you cannot get from security groups.
-- **Shared state is explicit.** Quotas move to DynamoDB (on-demand, conditional writes); identity
-  sessions to signed JWTs with short TTL plus refresh; nothing else shares state.
-- **Deploy by digest, and the human merges the bump.** App repos publish `repo@sha256:…`; the
-  platform environment root pins it. The review of the pinned digest is the review of what runs —
-  which preserves the "reviewed object = merged object" invariant across a repo boundary.
-- **N-1 compatibility.** A consumer must run against the previous provider version for one release,
-  so two repos never need a simultaneous deploy.
-
-**Tradeoffs.**
-
-- *For:* genuine independent release trains; per-team blast radius; per-service IAM and secrets;
-  independent scaling; the UI ships without the API.
-- *Against:* distributed auth is the hardest part of any split and is where most of the risk sits
-  (cookie domain, SameSite, logout revocation, token clock skew). Five CI pipelines, five sets of
-  dependency updates, six repos of branch protection. The platform team becomes a bottleneck the
-  moment it starts reviewing instead of publishing modules. A cross-repo change is now two PRs with
-  an order, which is *worse* for a single AI agent than today's atomic edit.
-- *Reversibility:* medium. Once auth is distributed and state is in DynamoDB, merging back is a
-  project. Do it for a trigger, not for tidiness.
-
----
-
-## 6. Proposal C — Monorepo with enforced boundaries (the counterfactual)
-
-Keep one repository; split into `services/` and `packages/` with a uv workspace, path-filtered CI,
-`CODEOWNERS`, `import-linter` rules, and one Dockerfile per deploy unit.
-
-**Tradeoffs.**
-
-- *For:* almost all of the *code* decoupling at ~10% of the cost; one atomic cross-cutting change;
-  one dependency tree; one place for contract tests; no cross-repo tokens. Best option if the real
-  problem is "the code is tangled", not "teams block each other".
-- *Against:* GitHub permissions are repo-scoped, so an agent or contractor with write access can
-  still touch the deploy workflow, the IAM trust anchor, and every service. That is precisely the
-  blast-radius problem AI-assisted work makes urgent. CI concurrency and clone size grow with the
-  team; a missing path filter means every push tests everything. One compromised token is all repos.
-- *Reversibility:* high, and it is the cheapest way to *practise* the boundaries before paying for
-  the repo split. The `services/` layout can be lifted into repos later with `git filter-repo`.
-
-**Recommendation:** treat C as Stage 0's working style, not the destination. Enforce the import
-boundaries in the current repo now; cut repos when the triggers in §7 fire.
-
----
-
-## 7. When to split — and when not to
-
-Every split must name the problem it solves. If no row fires, do not create the repo.
-
-| Split | Trigger (any one) | Exit criteria |
+| Previous proposal | What it becomes | Split only when |
 | --- | --- | --- |
-| Platform repo | **Always** — infra already owns prod trust and 933 lines | App repo has no AWS role; a plan runs on every infra PR; prod apply needs a human approval |
-| Contracts repo | A second deploy unit, or an external consumer of the API | `oasdiff` fails a deliberate breaking change in CI; a generated client compiles |
-| Model gateway | Second AI feature/team; audit or retention requirement; key-rotation policy; >1 service calling a provider | Provider key exists in exactly one secret; one audit record per request; a per-team budget is enforced across two tasks |
-| Identity | A second service authenticates users; web moves to CloudFront | `SESSION_SECRET` exists in one service; JWKS verification works in a service that never saw it |
-| Web | UI release cadence differs, or a frontend team exists | UI deploys without an API deploy; CORS + credentials + CSRF tests pass |
-| Chat | Chat must scale independently, or its cadence conflicts with gateway/identity | Chat and gateway release on different days without coordination |
-
-**Do not split:**
-
-- `ratelimit.py` into a service. It is a library plus a store; a quota service is a database with a
-  network hop in front of it.
-- By layer (`routes/`, `services/`, `models/`) or by endpoint. That is a directory, not a boundary.
-- `bodylimit` into a repo. Put it at the edge (ALB/WAF) or copy ten lines into the template.
-- A `common`/`shared` repo with one consumer. That is a distributed monolith with extra steps.
+| `zuchat-contracts` repo | the `zuchat-sdk` package | an external consumer needs the schemas |
+| `zuchat-identity` repo | a capability inside `zuchat-platform` | a second product must verify users independently |
+| `zuchat-web` repo | `web-<surface>` | a frontend team owns its own cadence |
+| `zuchat-model-gateway` repo | the data plane of `zuchat-platform` | the platform outgrows one deploy unit |
 
 ---
 
-## 8. Contracts: the seam that makes the rest safe
+## 6. What happens to today's code
 
-The contract is five small, versioned things. Write them down once; generate everything else.
-
-| Contract | Consumer | Enforcement |
+| Today | Becomes | Consequence |
 | --- | --- | --- |
-| `POST /api/chat` — `{message: 1..4000}` → `{reply}` | Web, integrations | OpenAPI + `oasdiff breaking` |
-| `POST /api/chat/stream` — `data:{"text"}` … `data:[DONE]`, `event:error` | Web | Schema for frame kinds; a recorded stream replayed as a test |
-| Errors — `{"detail"}`, 429 + `Retry-After`, 401 + `WWW-Authenticate`, 413 | All | Shared error schema in the spec |
-| Identity — `sub`, `email`, `name`, `exp`, `iss`, `aud` | Every service | JWKS + claims test; never share the signing secret |
-| Ops — `/health` (no deps), `/ready` (deps), `/metrics` | ALB, platform | Template + platform alarms |
-
-**Compatibility policy:** additive within a major. A new SSE frame kind must be ignorable by an old
-client. A removed field is a `/v2`, with the old path served for one release.
-
-**Why this matters more than the repo split:** today one process cannot drift from itself. The
-moment there are two deployables, every unchecked assumption between them becomes a production
-incident class. Contract tests are the *safety net that replaces the compiler*.
+| `deepseek.py` (199 lines) | model router adapter behind an `alias → provider` table | the only file that knows a provider exists |
+| `api_routes.py` chat + `_events` | generic run endpoint + orchestrator | no per-agent route, no per-agent stream code |
+| `ratelimit.py` (223 lines) | budget middleware keyed by `(user, team, agent)` | one enforcement point, shared store, survives deploys |
+| `config.py` | platform settings + per-agent defaults | the LLM key no longer gates `/health` or `/login` |
+| `auth.py` | user identity, plus workload identity for tools | product services never touch a session cookie |
+| `static/app.js` (392 lines) | SDK + streaming hook + schema renderer | the 200-line stream parser becomes a library call |
+| `pages.py` / static HTML | one catalog-driven page, or a team's own surface | a new agent needs no page |
+| `terraform/**` (933 lines) | platform repo, per-service task roles | product repos hold no AWS credential |
+| `tests/test_main.py` (49 tests) | conformance suite + contract tests + per-agent evals | quality moves next to the agent, not the app |
 
 ---
 
-## 9. Using AI more safely
+## 7. Tradeoffs
 
-Two different questions, usually conflated. Both need answers.
+This design has real costs, and they are larger than the repo split's. They are the reason the
+plan is staged.
 
-### 9.1 Agents changing this codebase
-
-| Risk today | Why | After |
-| --- | --- | --- |
-| One commit can change UI, API, quotas, IAM and the deploy gate | Everything is in one repo, one lockfile | Repo-scoped blast radius; platform repo is the only one with cloud write |
-| An agent with repo write can edit its own CI | Workflow files sit beside the code | Reusable workflows pinned by SHA + `CODEOWNERS` on `.github/workflows` + org-level required checks |
-| An agent can reach production | App repo assumes `zuchat-tf-apply-production` from a reviewed Environment | App repos hold no AWS role at all; apply lives in the platform repo |
-| The provider key is reachable from the app task | `DEEPSEEK_API_KEY` in `terraform/ecs/ecs.tf` | Only the gateway's task role can read it |
-| Context is the whole product, every time | 2.7k lines in one tree | Per-repo context of 200–800 lines; contracts are the only cross-repo reading |
-| Silent contract drift becomes possible after a split | No contract tests today | `oasdiff` + generated clients + consumer tests |
-| Two agents edit one working tree | Shared checkout | One repo per team, one worktree per agent, `[warn]` + claim on shared resources |
-
-**The honest cost:** splitting repos makes an AI agent *less* able to make one atomic change. Today
-it can fix both sides of a wire format in one commit and one test run. After the split that is two
-PRs, a version bump, and an ordering rule. Safety here is bought with coordination, and the
-mitigation is contract-first design, not better prompting.
-
-**Non-negotiables:** no agent merges, no agent holds a production credential, no agent moves a
-ticket to Done. The current `AGENTS.md` already says this; the platform must not create a
-convenience path around it (a bot token, a "deploy" button, an auto-merge queue).
-
-### 9.2 The AI product
-
-Today the app talks to `api.deepseek.com` directly from the request handler, with the key in its own
-task definition. Controls are real but local: request rate, concurrency, token budgets, output cap.
-Gaps, and what the gateway does about them:
-
-| Gap | Evidence | Gateway control |
-| --- | --- | --- |
-| Provider key in the product service | `terraform/ecs/ecs.tf` secrets | One secret, one task role, short-lived where possible |
-| No model allowlist | `deepseek.py:8`, `deepseek.py:146` (`model="deepseek-chat"`) | Server-side model selection; client cannot choose |
-| No prompt/response policy, moderation or PII redaction | none exists | Policy hook at the single egress point; fail-closed decision recorded |
-| No audit trail | only `logger.warning` on stream failure | One record per request: actor, model, tokens, latency, decision, trace id |
-| Budgets reset on deploy and are per-task | `ratelimit.py:10-12` | Shared store; per-user, per-team and global budgets; survives deploys |
-| No egress control | task has open egress | Only the gateway can reach the provider; app services have no internet egress |
-| No cost attribution | one global budget | Spend by service/team/key, exported as a metric |
-
-**Constraint to decide explicitly:** whether the gateway fails **open** (serve the request, log a
-policy failure) or **closed** (refuse). For a public chat app, closed on safety policy and open on
-audit-log failure is defensible; the reverse is not. Write it down.
-
----
-
-## 10. Cost
-
-Order of magnitude, `ap-southeast-2`, current traffic:
-
-| Item | Monthly |
-| --- | --- |
-| Additional ECS service (0.5 vCPU / 1 GB, no NAT) | ~$18–25 |
-| Shared ALB, extra target group / listener rule | ~$0 (ALB already exists; a new ALB would be ~$25) |
-| DynamoDB on-demand quota store | <$1 |
-| CloudFront + S3 for the UI | <$1 |
-| CloudWatch logs, alarms, dashboards | ~$5 |
-| **Runtime total** | **~$25–35/month above today** |
-
-The real number is not AWS. Each extra repo is roughly **0.5–1 engineer-day per month** in
-dependency updates, CI maintenance and version coordination: **2–3 days/month** after Stage 3, **up
-to 6** at the full shape. State that to the boss plainly; if there is no platform owner, the repos
-will rot and the split will be worse than the monolith.
-
-Migration cost, one-off: platform extraction ~3–5 days; contracts ~3 days; gateway ~5–8 days;
-identity ~5–10 days (the risky one); web ~3 days; chat ~3 days. Terraform state moves
-(`terraform state mv`/`import`) and a weighted target-group cutover are the fiddly parts.
-
----
-
-## 11. Risks
-
-| Risk | Likelihood | Impact | Mitigation |
+| # | Tension | The cost | The decision to make |
 | --- | --- | --- | --- |
-| Distributed auth breaks login/logout or leaks sessions | Medium | High | Identity issues short-lived JWTs; services verify via JWKS; never share `SESSION_SECRET`; test clock skew, logout, and cross-origin cookies |
-| Contract drift between repos | High without controls | High | `oasdiff breaking`, generated clients, recorded SSE replay, N-1 compatibility |
-| Deploy ordering incidents | Medium | Medium | Additive contracts, deploy provider before consumer, canary via weighted target group |
-| Quota overshoot after moving to a shared store | High (small) | Medium (cost) | Accept small overshoot; conditional writes; alert on spend delta; keep per-user gate at the edge |
-| Platform team becomes the bottleneck | High | High | Publish versioned modules and templates; never review app changes; app teams own their CI config |
-| Repo sprawl outruns ownership | Medium | High | No repo without an owner and a trigger in §7; `services.yaml` is the registry; archive on dormancy |
-| AI agents coordinate worse across repos | High | Medium | Contract-first, one worktree per agent, explicit handoff messages; accept N-1 window |
-| Split is done for the diagram, not a problem | Medium | High | Each stage has an exit criterion; stopping after Stage 2 is a valid outcome |
+| T1 | A manifest runtime is a product | versioning, back-compat, docs, on-call, a migration path for every schema change | name one owner before P0; it is not a side project |
+| T2 | Declarative agents have a ceiling | custom retrieval, post-processing, loops and multi-agent graphs are not expressible | tools are the only escape hatch; anything else is a platform change |
+| T3 | The gateway is a hot path | streaming, long-lived connections, tool latency, cancellation, abandoned runs | HA, per-run timeouts, backpressure; budget the stream-accounting bug class |
+| T4 | Evals become a release gate | flaky evals block shipping; eval quality becomes a platform duty | pass thresholds, quarantine, human override with an audit trail |
+| T5 | Tools give prompt injection hands | injected tool output can now cause actions, not just bad text | untrusted tool output, allowlist, no ambient credentials, approval for writes |
+| T6 | Config sprawl | per-agent budgets, safety, tools multiply | defaults and inheritance: env → team → agent, never the reverse |
+| T7 | UI kit lock-in | too much kit and teams fork it; too little and every UI reimplements streaming | ship primitives and hooks, not page frameworks |
+| T8 | Composition explodes cost and traces | agent-calls-agent is unbounded | support tool calls now, agent graphs only with a real use case |
+| T9 | Self-service ships bad prompts | teams can publish quality regressions without a platform review | evals + canary + per-agent kill switch; never review prompts by hand |
+
+**And the comparison the boss will ask for** — cost of the Nth agent:
+
+| Shape | Files touched per new agent | Cross-team coordination | Blast radius of a bad prompt |
+| --- | --- | --- | --- |
+| Today (monolith) | 8 across 5 subsystems | every merge conflicts with every team | the whole service |
+| Repo split, no abstraction | 8, plus contract and version pins | two PRs, ordering rules, repo knowledge | one service, but everyone must track the contract |
+| Agent platform | 3, in the team's repo | none; publish is a PR in their repo | one agent version, canary + kill switch |
+
+The repo split does not change the first column. That is why it cannot be the answer on its own.
 
 ---
 
-## 12. Decisions needed
+## 8. Failure modes to design against
 
-| # | Decision | Recommendation |
+| Failure | What it looks like | Countermeasure |
 | --- | --- | --- |
-| D1 | Is this anticipatory, or are there two teams today? | If anticipatory: stop after Stage 2. Do not cut identity/web/chat |
-| D2 | Who owns the platform (0.5 FTE minimum)? | Name them before Stage 1, or do not start Stage 1 |
-| D3 | Is provider spend/audit a compliance requirement? | Yes → gateway in Stage 3; no → still do it for key consolidation, later |
-| D4 | Does the UI need an independent release cadence? | No → keep web in `zuchat-app`; revisit when a frontend team exists |
-| D5 | Autonomy vs consistency | Consistency first: shared template and contract gates, team autonomy inside a repo |
-| D6 | Fail-open or fail-closed at the gateway | Closed for safety policy, open for audit-log failure; recorded in an ADR |
+| Distributed monolith | six repos, every change needs three PRs, teams still read the core | land the agent contract first; split repos last, and only per team |
+| YAML PhD | the manifest grows conditionals, loops and templating | manifest stays data; new behaviour is a tool, not a syntax |
+| God gateway | the platform owns models, tools, state, auth, deploys and the UI | start with models + budgets + audit; add tools behind a flag |
+| Registry theatre | manifests in git, but deploys still happen from a laptop | publish only through the pipeline; no manual version writes |
+| Eval flakiness | the gate is bypassed because it fails randomly | threshold + quarantine + recorded fixtures; measure flake rate |
+| Tool sprawl | every team writes its own tool client and credentials | typed tool registry, one credential model, no per-team secrets |
+| Platform bottleneck | platform team reviews agent PRs "just to be safe" | they publish policy and evals; they do not approve prompts |
+| Premature platform | one team, two agents, three months of platform work | stage gate: if fewer than ~4 agents are planned in 12 months, do P0 only |
 
 ---
 
-## 13. Staged plan (what to do first)
+## 9. Plan
 
 [![Staged roadmap](diagrams/04-roadmap.svg)](diagrams/04-roadmap.svg)
 
-**Stage 0 — seams, no new repos (1 week).** Split `Settings` per subsystem so the LLM key is not
-required by `/health` or auth; introduce a `Provider` protocol in front of `deepseek.py`; move
-counters behind a `CounterStore` interface with an in-memory implementation; add the OpenAPI spec as
-a checked-in artefact and a contract test that replays a recorded SSE stream; add `import-linter`
-rules for the intended module boundaries; make ECR immutable and stop pushing `:latest`.
+### 9.1 The golden path this plan is building
 
-**Stage 1 — platform (3–5 days).** Create `zuchat-platform`; move `terraform/**` (except
-`bootstrap`, applied once by a human) and reusable workflows; parameterise the GitHub OIDC subject
-per repo (C8) instead of the hardcoded `saxeum/zuchat`; give app repos no AWS role; deploy by digest
-through a reviewed environment bump.
+[![The golden path for a new agent](diagrams/07-golden-path.svg)](diagrams/07-golden-path.svg)
 
-**Stage 2 — contracts (3 days).** Create `zuchat-contracts`; publish the spec from CI; generate a TS
-client for the UI; run `oasdiff breaking` in the app repo. **This is a legitimate stopping point.**
+### 9.2 Stages
 
-**Stage 3 — model gateway (5–8 days).** Only if D3 or a second AI surface is real. Move the key,
-model allowlist, token accounting, audit record and policy hook; point `deepseek.py` at the gateway
-behind the Stage 0 `Provider` interface.
+| Stage | Work | Exit test | Stops being reversible after |
+| --- | --- | --- | --- |
+| **P0 — Agent run abstraction** (1–2 wks) | `AgentSpec` loaded from YAML; one generic run endpoint; typed event stream; budget middleware keyed by agent; port the current chat to `chat@1`; generate a TS client | current chat works through the generic path; a second trivial agent ships with only a manifest, prompt and eval — no Python | no |
+| **P1 — Eval gate + registry in git** (1–2 wks) | manifest schema validation in CI; recorded-fixture eval runner; version = immutable tag; publish records version + eval report | a manifest that fails evals cannot be published; rollback is a pin change | no |
+| **P2 — Tools + policy** (2–4 wks) | typed tool registry; allowlist, timeouts, call caps; safety profiles; untrusted tool output handling | a tool-using agent ships with no platform code change; a write tool needs approval | yes — tool contracts are hard to change |
+| **P3 — Control plane as a service** (2–3 wks) | publish API, channels and canary, per-agent budgets, audit + traces, kill switch | a team publishes and rolls back without a platform engineer | yes |
+| **P4 — SDK GA + UI kit** (1–2 wks) | generated clients, streaming hooks, schema-driven renderer, local `dev` with fixtures | a new agent's UI is a config change, not a new stream parser | no |
+| **P5 — Split repositories** (≈1 wk per repo) | platform, sdk, agents-`<team>`, web-`<surface>`; infra moves to platform | no product repo holds AWS credentials or provider keys | yes |
 
-**Stages 4–5 — identity, web, chat.** Only on a trigger from §7, and identity first: web on another
-origin cannot work until a token can be verified without the signing secret.
+**P0 and P1 happen inside the current repository. No new repos.** That is the direct answer to "how
+does this become a platform": by inverting the dependency, so the platform owns the run loop and
+teams own declarative artifacts. The repo split is P5, and by then it is mechanical.
+
+**Parallel delivery track (3–5 days, independent).** Move Terraform out of the app repo, stop
+pushing `:latest`, and remove the AWS apply role from the app repo. This reduces credential blast
+radius today and does not block P0. It is hardening, not the platform.
+
+### 9.3 Break-even, so the decision is economic
+
+Assumption, to be checked rather than believed: an agent today costs 1–2 weeks of core work plus
+coordination; the platform is ~9–14 engineer-weeks to P3 and ~0.5 FTE ongoing.
+
+| Agents in the next 12 months | Recommendation |
+| --- | --- |
+| 0–1 | Do P0 only (2 weeks). It removes the worst coupling and costs little |
+| 2–3 | P0 + P1. Still one repo; still no platform team |
+| 4–6 | P0–P3 breaks even within the year |
+| 7+ | P0–P5; the platform is cheaper than the coordination |
 
 ---
 
-## Appendix A — Evidence
+## 10. Using AI more safely
 
-[![Current state](diagrams/01-current-state.svg)](diagrams/01-current-state.svg)
+The platform is the mechanism, not a side benefit. Two directions:
 
-Observed at `bf8fbf1`. These are the four claims the whole proposal rests on.
+### 10.1 Agents changing the codebase
+
+| Repo | What an agent can reach | Why that is the point |
+| --- | --- | --- |
+| `agents-<team>` | manifests, prompts, eval fixtures | a bad change is caught by evals and canaried, and can only affect that agent |
+| `web-<surface>` | UI code, SDK calls | no provider key, no IAM, no runtime loop |
+| `zuchat-sdk` | schemas and generated clients | contract changes are visible to every consumer at compile time |
+| `zuchat-platform` | runtime, tools, infra, credentials | small, reviewed by the platform owner; the only place with cloud write |
+
+The previous draft's controls still apply — human merges, no production credential in product repos,
+reusable workflows pinned by SHA, `CODEOWNERS` on workflows — but they now have a **structural**
+basis: the product repos contain no runtime and no secrets, so "an agent in the product repo cannot
+reach production" is a property of the repo's contents, not a policy someone must remember.
+
+### 10.2 The AI product
+
+| Risk | Platform control |
+| --- | --- |
+| Provider key reachable from product code | key exists only in the platform's task role |
+| No model allowlist | alias table is server-side; clients cannot name a provider model |
+| No prompt/response policy | safety profile compiled into the agent version, enforced at the egress point |
+| No audit trail | one record per run: actor, agent, version, tokens, cost, tool calls, decision, trace |
+| Budgets reset on deploy | shared store; per user, team, agent and global; survives deploys |
+| Prompt injection through tools | tool output is untrusted data, never instructions; allowlist, call caps, approval for writes |
+| Bad prompt reaches everyone | eval gate, canary channel, per-agent kill switch |
+| No cost attribution | spend by team and agent, exported as a metric and a dashboard |
+
+[![Runtime and trust boundaries](diagrams/03-runtime-and-trust.svg)](diagrams/03-runtime-and-trust.svg)
+
+The new risk this design creates is **tool execution**. Before tools, a malicious prompt produced
+bad text; after tools, it can produce actions. The gateway must treat every tool result as
+untrusted input, never let it alter policy, and require explicit approval for anything that writes.
+That is why P2 is the stage with the longest review, and why tools do not ship before the run log
+and budgets do.
+
+---
+
+## 11. Cost and decisions
+
+| Item | One-off | Ongoing |
+| --- | --- | --- |
+| P0–P3 platform work | ~9–14 engineer-weeks | ~0.5 FTE (owner, evals, SDK, on-call) |
+| P4 SDK + UI kit | 1–2 weeks | part of the same owner |
+| P5 repo split | ~1 week per repo | ~0.5–1 day per repo per month |
+| Runtime | — | ~$25–60/month above today |
+
+The ongoing 0.5 FTE is the real cost, and it is the item most likely to be denied. Without a named
+owner, the platform becomes a second, more elaborate tangle: manifests nobody validates, evals that
+do not run, a gateway nobody patches.
+
+| # | Decision | Recommendation |
+| --- | --- | --- |
+| D1 | How many new agents in the next 12 months? | this sets the plan (see §9.3); do not build P2+ for one agent |
+| D2 | Who owns the runtime (0.5 FTE)? | name them before P0, or do P0 only |
+| D3 | May agents take write actions? | not before P2's audit, approval and kill switch exist |
+| D4 | Declarative-only, or an escape hatch? | declarative-only; tools are the extension point |
+| D5 | Who can override a failed eval? | platform owner, with a recorded reason; not the author |
+| D6 | Do product repos need separate permissions? | if yes, split at P5; if no, directories with `CODEOWNERS` |
+
+---
+
+## Appendix A — Couplings that constrain the platform
+
+These are unchanged by the reframing. They are the constraints the runtime must absorb.
+
+| # | Coupling | Evidence | What the platform does about it |
+| --- | --- | --- | --- |
+| C1 | One composition root imports every feature | `app.py:10-13`, `app.py:58-61` | one run router, not one per agent |
+| C2 | Config is global and the LLM key is required | `config.py:15`; `app.py:19`; `ops_routes.py:30` | key moves to the platform; teams carry none |
+| C3 | Spend policy and provider I/O share a handler | `api_routes.py:40-169` | orchestrator + budget middleware, separate from HTTP |
+| C4 | Counters are process-local | `ratelimit.py:10-12`, `:204` | shared store; per-agent keys; survives deploys |
+| C5 | Auth and app share a signed cookie | `auth.py:53-63`, `app.py:39-46` | identity capability; product code never sees the secret |
+| C6 | UI hardcodes same-origin `/api` calls | `static/app.js:308`, `:355` | SDK + generated client; UI is origin-agnostic |
+| C7 | Infra applies from the app repo | `terraform-apply.yml`; `terraform/ecs/*` | infra lives in the platform repo; delivery track fixes this first |
+| C8 | Repo identity is hardcoded in IAM trust | `github_actions.tf:11-26` | parameterised per environment, not per service |
+| C9 | Mutable `:latest` alongside the SHA tag | `Makefile:push`; `main.tf:26` | digest pinning; immutable publishes |
+| C10 | Tests are app-level only | `tests/test_main.py:1-52` | conformance + contract tests + per-agent evals |
+
+## Appendix B — Evidence
+
+Observed at `bf8fbf1`.
+
+There is no agent in the code: one user message, a string request, and no tool or history support.
+
+```
+grep -n '"messages"\|class ChatRequest\|message: str' src/zuchat/deepseek.py src/zuchat/api_routes.py
+```
+
+```
+src/zuchat/deepseek.py:41:    message: str,
+src/zuchat/deepseek.py:49:        "messages": [{"role": "user", "content": message}],
+src/zuchat/deepseek.py:145:    message: str,
+src/zuchat/deepseek.py:173:    message: str,
+src/zuchat/api_routes.py:26:class ChatRequest(BaseModel):
+src/zuchat/api_routes.py:29:    message: str = Field(min_length=1, max_length=4000)
+src/zuchat/api_routes.py:132:def _events(email: str, api_key: str, message: str) -> Iterator[str]:
+```
 
 Counters are process-local, so a second task doubles every budget:
 
@@ -407,7 +513,7 @@ grep -n '^    get_settings()' src/zuchat/app.py
 19:    get_settings()
 ```
 
-Infrastructure is applied by the same repository's pipeline, from a reviewed Environment:
+Infrastructure is applied by the same repository's pipeline:
 
 ```
 grep -n 'environment: production\|terraform apply' .github/workflows/terraform-apply.yml
@@ -429,11 +535,11 @@ grep -n 'github_repo  = \|github_subject_prefix = "repo' terraform/ecs/github_ac
 22:  github_subject_prefix = "repo:saxeum@343752441/zuchat@1457250024"
 ```
 
-## Appendix B — Sources
+## Appendix C — Sources
 
-- `README.md` — runtime, limits, endpoints, bootstrap
-- `src/zuchat/{app,config,auth,api_routes,ratelimit,deepseek}.py` — coupling evidence
-- `terraform/ecs/{ecs,iam,github_actions,versions}.tf` — deploy and trust topology
+- `src/zuchat/{deepseek,api_routes,app,config,ratelimit,auth}.py` — the runtime the platform absorbs
+- `src/zuchat/static/app.js` — the UI coupling the SDK removes
+- `terraform/ecs/{ecs,iam,github_actions,main}.tf` — credentials, deploy and trust
 - `.github/workflows/{ci,docker,terraform-plan,terraform-apply}.yml` — change and deploy path
-- `tests/test_main.py` — current safety net
-- Repo rules: `AGENTS.md` (human merges, invariant 5: nothing applied outside the pipeline)
+- `tests/test_main.py` — the current safety net
+- Repo rules: `AGENTS.md` (human merges; nothing applied outside the pipeline)

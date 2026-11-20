@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 552" width="1100" height="552" role="img" aria-labelledby="t d">
-  <title id="t">Rollout: every split needs a trigger</title>
-  <desc id="d">Six stages from left to right. Stages zero to two are recommended now and can be stopped after. Stage three is conditional on a second AI surface or an audit requirement. Stages four and five wait for an independent team or release cadence.</desc>
+  <title id="t">Rollout: build the platform before splitting repositories</title>
+  <desc id="d">Six stages. P0 and P1 happen inside today's repository and add no repos. P2 to P4 build one platform service with tools, a control plane and an SDK. P5 splits repositories only where teams need separate permissions or cadence.</desc>
   <rect width="1100" height="552" fill="#ffffff"/>
   <style>
     .h1{font:700 24px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#0f172a}
@@ -20,126 +20,125 @@
     </marker>
   </defs>
 
-  <text x="32" y="46" class="h1">Rollout: every split needs a trigger</text>
-  <text x="32" y="70" class="sub">Stages 0–2 are recommended now, and stage 2 is a valid place to stop. Anything beyond needs the evidence named below.</text>
+  <text x="32" y="46" class="h1">Rollout: build the platform before splitting repositories</text>
+  <text x="32" y="70" class="sub">P0–P1 happen inside today's repo and add no repositories. The split is P5, and by then it is mechanical.</text>
 
-  <!-- timeline -->
   <line x1="40" y1="124" x2="1046" y2="124" stroke="#94a3b8" stroke-width="1.6" marker-end="url(#tl)"/>
 
-  <!-- stage 0 -->
+  <!-- P0 -->
   <circle cx="120" cy="124" r="15" fill="#10b981"/>
   <text x="120" y="129" class="num" text-anchor="middle">0</text>
   <rect x="40" y="148" width="160" height="282" rx="8" fill="#ecfdf5" stroke="#34d399" stroke-width="1.6"/>
-  <text x="52" y="174" class="name">Seams in place</text>
-  <text x="52" y="194" class="delta">no new repo · 1 week</text>
+  <text x="52" y="174" class="name">Agent run abstraction</text>
+  <text x="52" y="194" class="delta">1–2 wks · same repo</text>
   <line x1="52" y1="204" x2="188" y2="204" stroke="#a7f3d0" stroke-width="1.2"/>
   <text x="52" y="222" class="kick">DO</text>
-  <text x="52" y="240" class="body">per-service settings</text>
-  <text x="52" y="256" class="body">Provider protocol</text>
-  <text x="52" y="272" class="body">CounterStore behind</text>
-  <text x="52" y="288" class="body">an interface</text>
+  <text x="52" y="240" class="body">AgentSpec from YAML</text>
+  <text x="52" y="256" class="body">one run endpoint</text>
+  <text x="52" y="272" class="body">typed event stream</text>
+  <text x="52" y="288" class="body">port chat to chat@1</text>
   <text x="52" y="318" class="kick">EXIT</text>
-  <text x="52" y="336" class="body">the LLM key is not</text>
-  <text x="52" y="352" class="body">required by /health</text>
+  <text x="52" y="336" class="body">a second agent ships</text>
+  <text x="52" y="352" class="body">with no Python</text>
   <text x="52" y="378" class="kick">TRIGGER</text>
-  <text x="52" y="394" class="trig">always</text>
+  <text x="52" y="394" class="trig">a second agent is</text>
+  <text x="52" y="408" class="trig">planned</text>
 
-  <!-- stage 1 -->
+  <!-- P1 -->
   <circle cx="292" cy="124" r="15" fill="#10b981"/>
   <text x="292" y="129" class="num" text-anchor="middle">1</text>
   <rect x="212" y="148" width="160" height="282" rx="8" fill="#ecfdf5" stroke="#34d399" stroke-width="1.6"/>
-  <text x="224" y="174" class="name">Platform</text>
-  <text x="224" y="194" class="delta">+1 repo · 3–5 days</text>
+  <text x="224" y="174" class="name">Eval gate + registry</text>
+  <text x="224" y="194" class="delta">1–2 wks · same repo</text>
   <line x1="224" y1="204" x2="360" y2="204" stroke="#a7f3d0" stroke-width="1.2"/>
   <text x="224" y="222" class="kick">DO</text>
-  <text x="224" y="240" class="body">move Terraform, CI,</text>
-  <text x="224" y="256" class="body">templates; per-repo</text>
-  <text x="224" y="272" class="body">OIDC subjects</text>
+  <text x="224" y="240" class="body">validate manifests</text>
+  <text x="224" y="256" class="body">recorded fixtures</text>
+  <text x="224" y="272" class="body">immutable versions</text>
   <text x="224" y="318" class="kick">EXIT</text>
-  <text x="224" y="336" class="body">app repo holds no</text>
-  <text x="224" y="352" class="body">AWS role at all</text>
+  <text x="224" y="336" class="body">a failed eval cannot</text>
+  <text x="224" y="352" class="body">be published</text>
   <text x="224" y="378" class="kick">TRIGGER</text>
-  <text x="224" y="394" class="trig">always</text>
+  <text x="224" y="394" class="trig">more than one agent</text>
 
-  <!-- stage 2 -->
-  <circle cx="464" cy="124" r="15" fill="#10b981"/>
+  <!-- P2 -->
+  <circle cx="464" cy="124" r="15" fill="#f59e0b"/>
   <text x="464" y="129" class="num" text-anchor="middle">2</text>
-  <rect x="384" y="148" width="160" height="282" rx="8" fill="#ecfdf5" stroke="#34d399" stroke-width="1.6"/>
-  <text x="396" y="174" class="name">Contracts</text>
-  <text x="396" y="194" class="delta">+1 repo · 3 days</text>
-  <line x1="396" y1="204" x2="532" y2="204" stroke="#a7f3d0" stroke-width="1.2"/>
+  <rect x="384" y="148" width="160" height="282" rx="8" fill="#fffbeb" stroke="#fbbf24" stroke-width="1.6"/>
+  <text x="396" y="174" class="name">Tools + policy</text>
+  <text x="396" y="194" class="delta">2–4 wks</text>
+  <line x1="396" y1="204" x2="532" y2="204" stroke="#fde68a" stroke-width="1.2"/>
   <text x="396" y="222" class="kick">DO</text>
-  <text x="396" y="240" class="body">OpenAPI, SSE and</text>
-  <text x="396" y="256" class="body">claims; generated</text>
-  <text x="396" y="272" class="body">clients; oasdiff in CI</text>
+  <text x="396" y="240" class="body">typed tool registry</text>
+  <text x="396" y="256" class="body">allowlist and caps</text>
+  <text x="396" y="272" class="body">safety profiles</text>
   <text x="396" y="318" class="kick">EXIT</text>
-  <text x="396" y="336" class="body">a deliberate break</text>
-  <text x="396" y="352" class="body">fails the build</text>
+  <text x="396" y="336" class="body">a tool agent ships</text>
+  <text x="396" y="352" class="body">with no platform code</text>
   <text x="396" y="378" class="kick">TRIGGER</text>
-  <text x="396" y="394" class="trig">a second deploy unit</text>
-  <text x="396" y="408" class="trig">or an external consumer</text>
+  <text x="396" y="394" class="trig">agents must act,</text>
+  <text x="396" y="408" class="trig">not just answer</text>
 
-  <!-- stage 3 -->
+  <!-- P3 -->
   <circle cx="636" cy="124" r="15" fill="#f59e0b"/>
   <text x="636" y="129" class="num" text-anchor="middle">3</text>
   <rect x="556" y="148" width="160" height="282" rx="8" fill="#fffbeb" stroke="#fbbf24" stroke-width="1.6"/>
-  <text x="568" y="174" class="name">Model gateway</text>
-  <text x="568" y="194" class="delta">+1 repo · 5–8 days</text>
+  <text x="568" y="174" class="name">Control plane</text>
+  <text x="568" y="194" class="delta">2–3 wks</text>
   <line x1="568" y1="204" x2="704" y2="204" stroke="#fde68a" stroke-width="1.2"/>
   <text x="568" y="222" class="kick">DO</text>
-  <text x="568" y="240" class="body">keys, allowlist,</text>
-  <text x="568" y="256" class="body">policy, audit, and</text>
-  <text x="568" y="272" class="body">shared budgets</text>
+  <text x="568" y="240" class="body">publish API</text>
+  <text x="568" y="256" class="body">channels and canary</text>
+  <text x="568" y="272" class="body">budgets, audit, kill</text>
   <text x="568" y="318" class="kick">EXIT</text>
-  <text x="568" y="336" class="body">one key, one audit</text>
-  <text x="568" y="352" class="body">record, one egress</text>
+  <text x="568" y="336" class="body">a team publishes and</text>
+  <text x="568" y="352" class="body">rolls back alone</text>
   <text x="568" y="378" class="kick">TRIGGER</text>
-  <text x="568" y="394" class="trig">second AI surface,</text>
-  <text x="568" y="408" class="trig">audit need, or key</text>
-  <text x="568" y="422" class="trig">consolidation</text>
+  <text x="568" y="394" class="trig">more than one team</text>
 
-  <!-- stage 4 -->
-  <circle cx="808" cy="124" r="15" fill="#cbd5e1"/>
-  <text x="808" y="129" class="num" text-anchor="middle" fill="#334155">4</text>
-  <rect x="728" y="148" width="160" height="282" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.4" stroke-dasharray="6 5"/>
-  <text x="740" y="174" class="name">Identity</text>
-  <text x="740" y="194" class="delta">+1 repo · 5–10 days</text>
-  <line x1="740" y1="204" x2="876" y2="204" stroke="#e2e8f0" stroke-width="1.2"/>
+  <!-- P4 -->
+  <circle cx="808" cy="124" r="15" fill="#f59e0b"/>
+  <text x="808" y="129" class="num" text-anchor="middle">4</text>
+  <rect x="728" y="148" width="160" height="282" rx="8" fill="#fffbeb" stroke="#fbbf24" stroke-width="1.6"/>
+  <text x="740" y="174" class="name">SDK + UI kit</text>
+  <text x="740" y="194" class="delta">1–2 wks</text>
+  <line x1="740" y1="204" x2="876" y2="204" stroke="#fde68a" stroke-width="1.2"/>
   <text x="740" y="222" class="kick">DO</text>
-  <text x="740" y="240" class="body">OIDC to short-lived</text>
-  <text x="740" y="256" class="body">JWT; services verify</text>
-  <text x="740" y="272" class="body">via JWKS</text>
+  <text x="740" y="240" class="body">generated clients</text>
+  <text x="740" y="256" class="body">streaming hooks</text>
+  <text x="740" y="272" class="body">schema renderer</text>
   <text x="740" y="318" class="kick">EXIT</text>
-  <text x="740" y="336" class="body">a service verifies</text>
-  <text x="740" y="352" class="body">without the secret</text>
+  <text x="740" y="336" class="body">a new agent UI is a</text>
+  <text x="740" y="352" class="body">config change</text>
   <text x="740" y="378" class="kick">TRIGGER</text>
-  <text x="740" y="394" class="trig">a second service</text>
-  <text x="740" y="408" class="trig">must know who the</text>
-  <text x="740" y="422" class="trig">user is</text>
+  <text x="740" y="394" class="trig">a UI team exists</text>
 
-  <!-- stage 5 -->
+  <!-- P5 -->
   <circle cx="980" cy="124" r="15" fill="#cbd5e1"/>
   <text x="980" y="129" class="num" text-anchor="middle" fill="#334155">5</text>
   <rect x="900" y="148" width="160" height="282" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.4" stroke-dasharray="6 5"/>
-  <text x="912" y="174" class="name">Web and chat</text>
-  <text x="912" y="194" class="delta">+2 repos · 3–6 days</text>
+  <text x="912" y="174" class="name">Split repos</text>
+  <text x="912" y="194" class="delta">~1 wk per repo</text>
   <line x1="912" y1="204" x2="1048" y2="204" stroke="#e2e8f0" stroke-width="1.2"/>
   <text x="912" y="222" class="kick">DO</text>
-  <text x="912" y="240" class="body">static UI to</text>
-  <text x="912" y="256" class="body">CloudFront; chat</text>
-  <text x="912" y="272" class="body">out of the app</text>
+  <text x="912" y="240" class="body">platform, sdk,</text>
+  <text x="912" y="256" class="body">agents-&lt;team&gt;,</text>
+  <text x="912" y="272" class="body">web-&lt;surface&gt;</text>
   <text x="912" y="318" class="kick">EXIT</text>
-  <text x="912" y="336" class="body">independent</text>
-  <text x="912" y="352" class="body">deploy trains</text>
+  <text x="912" y="336" class="body">no product repo has</text>
+  <text x="912" y="352" class="body">cloud credentials</text>
   <text x="912" y="378" class="kick">TRIGGER</text>
-  <text x="912" y="394" class="trig">cadence differs,</text>
-  <text x="912" y="408" class="trig">or a team owns it</text>
+  <text x="912" y="394" class="trig">teams need separate</text>
+  <text x="912" y="408" class="trig">permissions or cadence</text>
 
   <!-- brackets -->
-  <path d="M 40 458 L 40 466 L 544 466 L 544 458" fill="none" stroke="#10b981" stroke-width="1.6"/>
-  <text x="292" y="482" class="brk" fill="#047857" text-anchor="middle">a valid stopping point</text>
-  <path d="M 556 458 L 556 466 L 1060 466 L 1060 458" fill="none" stroke="#f59e0b" stroke-width="1.6" stroke-dasharray="5 4"/>
-  <text x="808" y="482" class="brk" fill="#b45309" text-anchor="middle">only when the trigger fires</text>
+  <path d="M 40 452 L 40 460 L 372 460 L 372 452" fill="none" stroke="#10b981" stroke-width="1.6"/>
+  <text x="206" y="478" class="brk" fill="#047857" text-anchor="middle">no new repos</text>
+  <path d="M 384 452 L 384 460 L 888 460 L 888 452" fill="none" stroke="#f59e0b" stroke-width="1.6"/>
+  <text x="636" y="478" class="brk" fill="#b45309" text-anchor="middle">one platform service</text>
+  <path d="M 900 452 L 900 460 L 1060 460 L 1060 452" fill="none" stroke="#94a3b8" stroke-width="1.6" stroke-dasharray="5 4"/>
+  <text x="980" y="478" class="brk" fill="#475569" text-anchor="middle">repos follow teams</text>
 
-  <text x="32" y="522" class="note">Clear each stage's exit criterion before starting the next. A split that cannot name its trigger does not happen.</text>
+  <text x="32" y="516" class="note">Each stage's exit test is a team shipping without reading the platform. If it cannot, the stage is not done.</text>
+  <text x="32" y="536" class="note">P0 alone is a legitimate stopping point: it removes the worst coupling for two weeks of work.</text>
 </svg>

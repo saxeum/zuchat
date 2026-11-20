@@ -1,110 +1,86 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 700" width="1100" height="700" role="img" aria-labelledby="t d">
-  <title id="t">Target: a federated platform reached in stages</title>
-  <desc id="d">Solid boxes ship in stages zero to three. Dashed boxes appear only when a named trigger fires. Contracts sit beneath the product as a versioned seam, and the platform repository is the only place holding cloud credentials.</desc>
-  <rect width="1100" height="700" fill="#ffffff"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 550" width="1100" height="550" role="img" aria-labelledby="t d">
+  <title id="t">Repositories follow teams, not layers</title>
+  <desc id="d">A team repo holds manifests, prompts, schemas and evals. A web surface repo holds UI built on the SDK. The SDK carries schemas, generated clients and React hooks. The platform repo holds the control plane, data plane and infrastructure, and is the only repo with cloud credentials and provider keys. Adding an agent is a directory and a pull request, not a new repository.</desc>
+  <rect width="1100" height="550" fill="#ffffff"/>
   <style>
     .h1{font:700 24px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#0f172a}
     .sub{font:400 13px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#475569}
-    .name{font:700 13.5px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#0f172a}
-    .body{font:400 10.5px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#475569}
-    .own{font:400 10px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#64748b;font-style:italic}
+    .bt{font:700 13px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#0f172a}
+    .bs{font:400 10.5px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#475569}
+    .own{font:400 9.5px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#64748b;font-style:italic}
+    .edge{font:400 9px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#64748b}
+    .ct{font:700 12.5px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#0f172a}
+    .note{font:400 10.5px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#475569}
     .pill{font:700 8.5px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#ffffff}
-    .edge{font:400 9.5px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#64748b}
-    .sec{font:700 12.5px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#1e3a8a}
-    .plat{font:700 13px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#065f46}
-    .note{font:400 11px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#64748b}
   </style>
   <defs>
-    <marker id="g" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
+    <marker id="r1" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
       <path d="M0,0 L9,4.5 L0,9 z" fill="#64748b"/>
     </marker>
-    <marker id="b" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
-      <path d="M0,0 L9,4.5 L0,9 z" fill="#60a5fa"/>
+    <marker id="r2" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="#059669"/>
     </marker>
   </defs>
 
-  <text x="32" y="48" class="h1">Target: a federated platform, reached in stages</text>
-  <text x="32" y="72" class="sub">Solid ships in stages 0–3 · dashed only when a named trigger fires · arrows are the only allowed dependency direction</text>
+  <text x="32" y="46" class="h1">Repositories follow teams, not layers</text>
+  <text x="32" y="70" class="sub">A feature is a directory. A repository is a team that needs isolation. Adding an agent should never add a repo.</text>
 
-  <!-- row 1 -->
-  <rect x="40" y="118" width="180" height="112" rx="9" fill="#fafafa" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="6 5"/>
-  <text x="52" y="142" class="name">zuchat-web</text>
-  <rect x="146" y="192" width="62" height="16" rx="8" fill="#94a3b8"/>
-  <text x="177" y="203" class="pill" text-anchor="middle">on trigger</text>
-  <text x="52" y="164" class="body">static UI → CloudFront</text>
-  <text x="52" y="181" class="body">no API code, no secrets</text>
-  <text x="52" y="204" class="own">owner: frontend</text>
+  <!-- team repos -->
+  <rect x="40" y="130" width="310" height="110" rx="9" fill="#ecfdf5" stroke="#34d399" stroke-width="1.8"/>
+  <text x="54" y="156" class="bt">agents-&lt;team&gt;</text>
+  <text x="54" y="177" class="bs">agent.yaml · prompts/</text>
+  <text x="54" y="194" class="bs">schemas/ · evals/</text>
+  <text x="54" y="218" class="own">owner: product team · no runtime code</text>
 
-  <rect x="280" y="118" width="210" height="112" rx="9" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.8"/>
-  <text x="294" y="142" class="name">zuchat-app</text>
-  <rect x="424" y="192" width="54" height="16" rx="8" fill="#3b82f6"/>
-  <text x="451" y="203" class="pill" text-anchor="middle">stage 0–3</text>
-  <text x="294" y="164" class="body">UI · auth · chat · policy</text>
-  <text x="294" y="181" class="body">the product, still one deploy</text>
-  <text x="294" y="204" class="own">owner: product team</text>
+  <rect x="40" y="262" width="310" height="110" rx="9" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.8"/>
+  <text x="54" y="288" class="bt">web-&lt;surface&gt;</text>
+  <text x="54" y="309" class="bs">product UI, built on the SDK</text>
+  <text x="54" y="326" class="bs">catalog page or bespoke layout</text>
+  <text x="54" y="350" class="own">owner: frontend · no platform imports</text>
 
-  <rect x="550" y="118" width="210" height="112" rx="9" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.8"/>
-  <text x="564" y="142" class="name">zuchat-model-gateway</text>
-  <rect x="696" y="192" width="52" height="16" rx="8" fill="#7c3aed"/>
-  <text x="722" y="203" class="pill" text-anchor="middle">stage 3</text>
-  <text x="564" y="164" class="body">keys · allowlist · budgets · audit</text>
-  <text x="564" y="181" class="body">one egress point for model traffic</text>
-  <text x="564" y="204" class="own">owner: AI platform</text>
-
-  <rect x="820" y="118" width="180" height="112" rx="9" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.4"/>
-  <text x="834" y="142" class="name">api.deepseek.com</text>
-  <text x="834" y="170" class="body">external provider</text>
-  <text x="834" y="187" class="body">reachable from the gateway</text>
-  <text x="834" y="204" class="body">and from nowhere else</text>
-
-  <!-- arrows -->
-  <line x1="220" y1="174" x2="276" y2="174" stroke="#64748b" stroke-width="1.5" marker-end="url(#g)"/>
-  <text x="248" y="163" class="edge" text-anchor="middle">cookie</text>
-  <text x="248" y="190" class="edge" text-anchor="middle">or JWT</text>
-
-  <line x1="490" y1="174" x2="546" y2="174" stroke="#64748b" stroke-width="1.5" marker-end="url(#g)"/>
-  <text x="518" y="163" class="edge" text-anchor="middle">stream</text>
-  <text x="518" y="190" class="edge" text-anchor="middle">+ usage</text>
-
-  <line x1="760" y1="174" x2="816" y2="174" stroke="#64748b" stroke-width="1.5" marker-end="url(#g)"/>
-  <text x="788" y="163" class="edge" text-anchor="middle">TLS</text>
-  <text x="788" y="190" class="edge" text-anchor="middle">+ key</text>
-
-  <!-- contracts -->
-  <line x1="130" y1="230" x2="130" y2="266" stroke="#60a5fa" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#b)"/>
-  <line x1="385" y1="230" x2="385" y2="266" stroke="#60a5fa" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#b)"/>
-  <line x1="655" y1="230" x2="655" y2="266" stroke="#60a5fa" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#b)"/>
-  <rect x="40" y="270" width="720" height="68" rx="8" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
-  <text x="56" y="293" class="sec">zuchat-contracts · stage 2</text>
-  <text x="56" y="313" class="body">OpenAPI · SSE frame kinds · identity claims · error envelope · generated clients</text>
-  <text x="56" y="330" class="body">additive-only within a major; oasdiff breaking fails every consumer's CI</text>
-
-  <!-- future split -->
-  <rect x="40" y="368" width="720" height="96" rx="8" fill="#fafafa" stroke="#cbd5e1" stroke-width="1.3" stroke-dasharray="5 4"/>
-  <text x="56" y="388" class="body" font-style="italic">lifts out of zuchat-app, one trigger at a time — never both without a reason</text>
-  <rect x="56" y="400" width="330" height="50" rx="7" fill="#ffffff" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="5 4"/>
-  <text x="70" y="420" style="font:700 11.5px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#0f172a">zuchat-identity</text>
-  <text x="70" y="437" class="body">OIDC login → short-lived JWT · owner: security</text>
-  <rect x="402" y="400" width="330" height="50" rx="7" fill="#ffffff" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="5 4"/>
-  <text x="416" y="420" style="font:700 11.5px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#0f172a">zuchat-chat</text>
-  <text x="416" y="437" class="body">orchestration + SSE · owner: product team</text>
+  <!-- sdk -->
+  <rect x="410" y="130" width="240" height="170" rx="9" fill="#f5f3ff" stroke="#a78bfa" stroke-width="1.8"/>
+  <text x="424" y="156" class="bt">zuchat-sdk</text>
+  <text x="424" y="180" class="bs">manifest + event schemas</text>
+  <text x="424" y="197" class="bs">generated TS + Python clients</text>
+  <text x="424" y="214" class="bs">React hooks and renderer</text>
+  <text x="424" y="231" class="bs">published packages, semver</text>
+  <rect x="424" y="248" width="86" height="20" rx="5" fill="#7c3aed"/>
+  <text x="467" y="262" class="pill" text-anchor="middle">the contract</text>
 
   <!-- platform -->
-  <rect x="40" y="496" width="960" height="106" rx="9" fill="#ecfdf5" stroke="#6ee7b7" stroke-width="1.8"/>
-  <text x="56" y="522" class="plat">zuchat-platform · stage 1</text>
-  <text x="56" y="546" class="body" font-size="11">Terraform modules · environment roots · reusable CI workflows pinned by SHA</text>
-  <text x="56" y="565" class="body" font-size="11">service and repository templates · services.yaml ownership registry</text>
-  <text x="56" y="586" class="body" font-size="10.5" fill="#065f46">the only repository with an AWS apply role; application repos hold no cloud credential</text>
-  <rect x="812" y="510" width="172" height="26" rx="6" fill="#b91c1c"/>
-  <text x="898" y="527" class="pill" text-anchor="middle" font-size="9.5">no AWS write in app repos</text>
+  <rect x="710" y="130" width="350" height="170" rx="9" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.8"/>
+  <text x="724" y="156" class="bt">zuchat-platform</text>
+  <text x="724" y="180" class="bs">control plane: registry, evals, policy</text>
+  <text x="724" y="197" class="bs">data plane: run gateway, orchestrator,</text>
+  <text x="724" y="214" class="bs">model router, tool executor</text>
+  <text x="724" y="231" class="bs">infra: Terraform, IAM, tasks</text>
+  <rect x="724" y="248" width="286" height="20" rx="5" fill="#b91c1c"/>
+  <text x="867" y="262" class="pill" text-anchor="middle">only repo with cloud credentials and provider keys</text>
 
-  <!-- legend -->
-  <rect x="40" y="630" width="26" height="14" rx="3" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.6"/>
-  <text x="74" y="642" class="note">ships in stages 0–3</text>
-  <rect x="252" y="630" width="26" height="14" rx="3" fill="#fafafa" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="5 4"/>
-  <text x="286" y="642" class="note">created only on a trigger</text>
-  <rect x="474" y="630" width="26" height="14" rx="3" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.4"/>
-  <text x="508" y="642" class="note">outside the trust boundary</text>
+  <!-- arrows -->
+  <line x1="350" y1="185" x2="406" y2="185" stroke="#64748b" stroke-width="1.5" marker-end="url(#r1)"/>
+  <text x="378" y="177" class="edge" text-anchor="middle">uses</text>
+  <line x1="350" y1="317" x2="406" y2="317" stroke="#64748b" stroke-width="1.5" marker-end="url(#r1)"/>
+  <text x="378" y="309" class="edge" text-anchor="middle">imports</text>
+  <line x1="650" y1="251" x2="706" y2="251" stroke="#64748b" stroke-width="1.5" marker-end="url(#r1)"/>
+  <text x="678" y="243" class="edge" text-anchor="middle">run API</text>
 
-  <text x="40" y="676" class="note" font-size="11">One repository per reason to change. Web, identity and chat are not split until §7 fires.</text>
+  <path d="M 195 130 L 195 104 L 820 104 L 820 126" fill="none" stroke="#059669" stroke-width="1.6" marker-end="url(#r2)"/>
+  <text x="508" y="96" class="edge" fill="#047857" text-anchor="middle">publish: validate → eval → registry</text>
+
+  <!-- callout -->
+  <rect x="40" y="386" width="620" height="100" rx="9" fill="#ecfdf5" stroke="#6ee7b7" stroke-width="1.5"/>
+  <text x="56" y="412" class="ct">Adding an agent is a directory, not a repository</text>
+  <text x="56" y="434" class="note">1 manifest · 1 prompt · 1 eval suite — one PR in the repo the team already owns.</text>
+  <text x="56" y="454" class="note">0 platform files · 0 Terraform · 0 new repos · 0 provider keys.</text>
+  <text x="56" y="474" class="note" fill="#047857">This is the property the previous draft's repo split did not have.</text>
+
+  <text x="690" y="408" class="note">Repository count grows with teams that need</text>
+  <text x="690" y="426" class="note">separate permissions and on-call, never with</text>
+  <text x="690" y="444" class="note">features. Identity, contracts and infrastructure</text>
+  <text x="690" y="462" class="note">stay inside one platform repo until a second</text>
+  <text x="690" y="480" class="note">consumer actually exists.</text>
+
+  <text x="690" y="512" class="note" font-style="italic">Splitting the platform into microservices is not a goal.</text>
 </svg>
