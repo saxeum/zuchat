@@ -1,0 +1,145 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 552" width="1100" height="552" role="img" aria-labelledby="t d">
+  <title id="t">Rollout: every split needs a trigger</title>
+  <desc id="d">Six stages from left to right. Stages zero to two are recommended now and can be stopped after. Stage three is conditional on a second AI surface or an audit requirement. Stages four and five wait for an independent team or release cadence.</desc>
+  <rect width="1100" height="552" fill="#ffffff"/>
+  <style>
+    .h1{font:700 24px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#0f172a}
+    .sub{font:400 13px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#475569}
+    .num{font:700 12px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#ffffff}
+    .name{font:700 12px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#0f172a}
+    .delta{font:400 9.5px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#64748b}
+    .kick{font:700 8px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#94a3b8;letter-spacing:0.8px}
+    .body{font:400 10px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#334155}
+    .trig{font:400 9.5px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#92400e;font-style:italic}
+    .brk{font:700 10.5px 'Inter','Segoe UI',Helvetica,Arial,sans-serif}
+    .note{font:400 11px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#475569}
+  </style>
+  <defs>
+    <marker id="tl" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+
+  <text x="32" y="46" class="h1">Rollout: every split needs a trigger</text>
+  <text x="32" y="70" class="sub">Stages 0–2 are recommended now, and stage 2 is a valid place to stop. Anything beyond needs the evidence named below.</text>
+
+  <!-- timeline -->
+  <line x1="40" y1="124" x2="1046" y2="124" stroke="#94a3b8" stroke-width="1.6" marker-end="url(#tl)"/>
+
+  <!-- stage 0 -->
+  <circle cx="120" cy="124" r="15" fill="#10b981"/>
+  <text x="120" y="129" class="num" text-anchor="middle">0</text>
+  <rect x="40" y="148" width="160" height="282" rx="8" fill="#ecfdf5" stroke="#34d399" stroke-width="1.6"/>
+  <text x="52" y="174" class="name">Seams in place</text>
+  <text x="52" y="194" class="delta">no new repo · 1 week</text>
+  <line x1="52" y1="204" x2="188" y2="204" stroke="#a7f3d0" stroke-width="1.2"/>
+  <text x="52" y="222" class="kick">DO</text>
+  <text x="52" y="240" class="body">per-service settings</text>
+  <text x="52" y="256" class="body">Provider protocol</text>
+  <text x="52" y="272" class="body">CounterStore behind</text>
+  <text x="52" y="288" class="body">an interface</text>
+  <text x="52" y="318" class="kick">EXIT</text>
+  <text x="52" y="336" class="body">the LLM key is not</text>
+  <text x="52" y="352" class="body">required by /health</text>
+  <text x="52" y="378" class="kick">TRIGGER</text>
+  <text x="52" y="394" class="trig">always</text>
+
+  <!-- stage 1 -->
+  <circle cx="292" cy="124" r="15" fill="#10b981"/>
+  <text x="292" y="129" class="num" text-anchor="middle">1</text>
+  <rect x="212" y="148" width="160" height="282" rx="8" fill="#ecfdf5" stroke="#34d399" stroke-width="1.6"/>
+  <text x="224" y="174" class="name">Platform</text>
+  <text x="224" y="194" class="delta">+1 repo · 3–5 days</text>
+  <line x1="224" y1="204" x2="360" y2="204" stroke="#a7f3d0" stroke-width="1.2"/>
+  <text x="224" y="222" class="kick">DO</text>
+  <text x="224" y="240" class="body">move Terraform, CI,</text>
+  <text x="224" y="256" class="body">templates; per-repo</text>
+  <text x="224" y="272" class="body">OIDC subjects</text>
+  <text x="224" y="318" class="kick">EXIT</text>
+  <text x="224" y="336" class="body">app repo holds no</text>
+  <text x="224" y="352" class="body">AWS role at all</text>
+  <text x="224" y="378" class="kick">TRIGGER</text>
+  <text x="224" y="394" class="trig">always</text>
+
+  <!-- stage 2 -->
+  <circle cx="464" cy="124" r="15" fill="#10b981"/>
+  <text x="464" y="129" class="num" text-anchor="middle">2</text>
+  <rect x="384" y="148" width="160" height="282" rx="8" fill="#ecfdf5" stroke="#34d399" stroke-width="1.6"/>
+  <text x="396" y="174" class="name">Contracts</text>
+  <text x="396" y="194" class="delta">+1 repo · 3 days</text>
+  <line x1="396" y1="204" x2="532" y2="204" stroke="#a7f3d0" stroke-width="1.2"/>
+  <text x="396" y="222" class="kick">DO</text>
+  <text x="396" y="240" class="body">OpenAPI, SSE and</text>
+  <text x="396" y="256" class="body">claims; generated</text>
+  <text x="396" y="272" class="body">clients; oasdiff in CI</text>
+  <text x="396" y="318" class="kick">EXIT</text>
+  <text x="396" y="336" class="body">a deliberate break</text>
+  <text x="396" y="352" class="body">fails the build</text>
+  <text x="396" y="378" class="kick">TRIGGER</text>
+  <text x="396" y="394" class="trig">a second deploy unit</text>
+  <text x="396" y="408" class="trig">or an external consumer</text>
+
+  <!-- stage 3 -->
+  <circle cx="636" cy="124" r="15" fill="#f59e0b"/>
+  <text x="636" y="129" class="num" text-anchor="middle">3</text>
+  <rect x="556" y="148" width="160" height="282" rx="8" fill="#fffbeb" stroke="#fbbf24" stroke-width="1.6"/>
+  <text x="568" y="174" class="name">Model gateway</text>
+  <text x="568" y="194" class="delta">+1 repo · 5–8 days</text>
+  <line x1="568" y1="204" x2="704" y2="204" stroke="#fde68a" stroke-width="1.2"/>
+  <text x="568" y="222" class="kick">DO</text>
+  <text x="568" y="240" class="body">keys, allowlist,</text>
+  <text x="568" y="256" class="body">policy, audit, and</text>
+  <text x="568" y="272" class="body">shared budgets</text>
+  <text x="568" y="318" class="kick">EXIT</text>
+  <text x="568" y="336" class="body">one key, one audit</text>
+  <text x="568" y="352" class="body">record, one egress</text>
+  <text x="568" y="378" class="kick">TRIGGER</text>
+  <text x="568" y="394" class="trig">second AI surface,</text>
+  <text x="568" y="408" class="trig">audit need, or key</text>
+  <text x="568" y="422" class="trig">consolidation</text>
+
+  <!-- stage 4 -->
+  <circle cx="808" cy="124" r="15" fill="#cbd5e1"/>
+  <text x="808" y="129" class="num" text-anchor="middle" fill="#334155">4</text>
+  <rect x="728" y="148" width="160" height="282" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.4" stroke-dasharray="6 5"/>
+  <text x="740" y="174" class="name">Identity</text>
+  <text x="740" y="194" class="delta">+1 repo · 5–10 days</text>
+  <line x1="740" y1="204" x2="876" y2="204" stroke="#e2e8f0" stroke-width="1.2"/>
+  <text x="740" y="222" class="kick">DO</text>
+  <text x="740" y="240" class="body">OIDC to short-lived</text>
+  <text x="740" y="256" class="body">JWT; services verify</text>
+  <text x="740" y="272" class="body">via JWKS</text>
+  <text x="740" y="318" class="kick">EXIT</text>
+  <text x="740" y="336" class="body">a service verifies</text>
+  <text x="740" y="352" class="body">without the secret</text>
+  <text x="740" y="378" class="kick">TRIGGER</text>
+  <text x="740" y="394" class="trig">a second service</text>
+  <text x="740" y="408" class="trig">must know who the</text>
+  <text x="740" y="422" class="trig">user is</text>
+
+  <!-- stage 5 -->
+  <circle cx="980" cy="124" r="15" fill="#cbd5e1"/>
+  <text x="980" y="129" class="num" text-anchor="middle" fill="#334155">5</text>
+  <rect x="900" y="148" width="160" height="282" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.4" stroke-dasharray="6 5"/>
+  <text x="912" y="174" class="name">Web and chat</text>
+  <text x="912" y="194" class="delta">+2 repos · 3–6 days</text>
+  <line x1="912" y1="204" x2="1048" y2="204" stroke="#e2e8f0" stroke-width="1.2"/>
+  <text x="912" y="222" class="kick">DO</text>
+  <text x="912" y="240" class="body">static UI to</text>
+  <text x="912" y="256" class="body">CloudFront; chat</text>
+  <text x="912" y="272" class="body">out of the app</text>
+  <text x="912" y="318" class="kick">EXIT</text>
+  <text x="912" y="336" class="body">independent</text>
+  <text x="912" y="352" class="body">deploy trains</text>
+  <text x="912" y="378" class="kick">TRIGGER</text>
+  <text x="912" y="394" class="trig">cadence differs,</text>
+  <text x="912" y="408" class="trig">or a team owns it</text>
+
+  <!-- brackets -->
+  <path d="M 40 458 L 40 466 L 544 466 L 544 458" fill="none" stroke="#10b981" stroke-width="1.6"/>
+  <text x="292" y="482" class="brk" fill="#047857" text-anchor="middle">a valid stopping point</text>
+  <path d="M 556 458 L 556 466 L 1060 466 L 1060 458" fill="none" stroke="#f59e0b" stroke-width="1.6" stroke-dasharray="5 4"/>
+  <text x="808" y="482" class="brk" fill="#b45309" text-anchor="middle">only when the trigger fires</text>
+
+  <text x="32" y="522" class="note">Clear each stage's exit criterion before starting the next. A split that cannot name its trigger does not happen.</text>
+</svg>
