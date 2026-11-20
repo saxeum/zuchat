@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 550" width="1100" height="550" role="img" aria-labelledby="t d">
+  <title id="t">Repositories follow teams, not layers</title>
+  <desc id="d">A team repo holds manifests, prompts, schemas and evals. A web surface repo holds UI built on the SDK. The SDK carries schemas, generated clients and React hooks. The platform repo holds the control plane, data plane and infrastructure, and is the only repo with cloud credentials and provider keys. Adding an agent is a directory and a pull request, not a new repository.</desc>
+  <rect width="1100" height="550" fill="#ffffff"/>
+  <style>
+    .h1{font:700 24px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#0f172a}
+    .sub{font:400 13px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#475569}
+    .bt{font:700 13px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#0f172a}
+    .bs{font:400 10.5px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#475569}
+    .own{font:400 9.5px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#64748b;font-style:italic}
+    .edge{font:400 9px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#64748b}
+    .ct{font:700 12.5px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#0f172a}
+    .note{font:400 10.5px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#475569}
+    .pill{font:700 8.5px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#ffffff}
+  </style>
+  <defs>
+    <marker id="r1" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="#64748b"/>
+    </marker>
+    <marker id="r2" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="#059669"/>
+    </marker>
+  </defs>
+
+  <text x="32" y="46" class="h1">Repositories follow teams, not layers</text>
+  <text x="32" y="70" class="sub">A feature is a directory. A repository is a team that needs isolation. Adding an agent should never add a repo.</text>
+
+  <!-- team repos -->
+  <rect x="40" y="130" width="310" height="110" rx="9" fill="#ecfdf5" stroke="#34d399" stroke-width="1.8"/>
+  <text x="54" y="156" class="bt">agents-&lt;team&gt;</text>
+  <text x="54" y="177" class="bs">agent.yaml · prompts/</text>
+  <text x="54" y="194" class="bs">schemas/ · evals/</text>
+  <text x="54" y="218" class="own">owner: product team · no runtime code</text>
+
+  <rect x="40" y="262" width="310" height="110" rx="9" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.8"/>
+  <text x="54" y="288" class="bt">web-&lt;surface&gt;</text>
+  <text x="54" y="309" class="bs">product UI, built on the SDK</text>
+  <text x="54" y="326" class="bs">catalog page or bespoke layout</text>
+  <text x="54" y="350" class="own">owner: frontend · no platform imports</text>
+
+  <!-- sdk -->
+  <rect x="410" y="130" width="240" height="170" rx="9" fill="#f5f3ff" stroke="#a78bfa" stroke-width="1.8"/>
+  <text x="424" y="156" class="bt">zuchat-sdk</text>
+  <text x="424" y="180" class="bs">manifest + event schemas</text>
+  <text x="424" y="197" class="bs">AG-UI types + generated clients</text>
+  <text x="424" y="214" class="bs">React streaming hooks</text>
+  <text x="424" y="231" class="bs">published packages, semver</text>
+  <rect x="424" y="248" width="86" height="20" rx="5" fill="#7c3aed"/>
+  <text x="467" y="262" class="pill" text-anchor="middle">the contract</text>
+
+  <!-- platform -->
+  <rect x="710" y="130" width="350" height="170" rx="9" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.8"/>
+  <text x="724" y="156" class="bt">zuchat-platform</text>
+  <text x="724" y="180" class="bs">control plane: registry, evals, policy</text>
+  <text x="724" y="197" class="bs">data plane: run gateway, compiler,</text>
+  <text x="724" y="214" class="bs">Pydantic AI Agent, toolsets</text>
+  <text x="724" y="231" class="bs">infra: Terraform, IAM, tasks</text>
+  <rect x="724" y="248" width="286" height="20" rx="5" fill="#b91c1c"/>
+  <text x="867" y="262" class="pill" text-anchor="middle">only repo with cloud credentials and provider keys</text>
+
+  <!-- arrows -->
+  <line x1="350" y1="185" x2="406" y2="185" stroke="#64748b" stroke-width="1.5" marker-end="url(#r1)"/>
+  <text x="378" y="177" class="edge" text-anchor="middle">uses</text>
+  <line x1="350" y1="317" x2="406" y2="317" stroke="#64748b" stroke-width="1.5" marker-end="url(#r1)"/>
+  <text x="378" y="309" class="edge" text-anchor="middle">imports</text>
+  <line x1="650" y1="251" x2="706" y2="251" stroke="#64748b" stroke-width="1.5" marker-end="url(#r1)"/>
+  <text x="678" y="243" class="edge" text-anchor="middle">run API</text>
+
+  <path d="M 195 130 L 195 104 L 820 104 L 820 126" fill="none" stroke="#059669" stroke-width="1.6" marker-end="url(#r2)"/>
+  <text x="508" y="96" class="edge" fill="#047857" text-anchor="middle">publish: validate → eval → registry</text>
+
+  <!-- callout -->
+  <rect x="40" y="386" width="620" height="100" rx="9" fill="#ecfdf5" stroke="#6ee7b7" stroke-width="1.5"/>
+  <text x="56" y="412" class="ct">Adding an agent is a directory, not a repository</text>
+  <text x="56" y="434" class="note">1 manifest · 1 prompt · 1 eval suite — one PR in the repo the team already owns.</text>
+  <text x="56" y="454" class="note">0 platform files · 0 Terraform · 0 new repos · 0 provider keys.</text>
+  <text x="56" y="474" class="note" fill="#047857">This is the property the previous draft's repo split did not have.</text>
+
+  <text x="690" y="408" class="note">Repository count grows with teams that need</text>
+  <text x="690" y="426" class="note">separate permissions and on-call, never with</text>
+  <text x="690" y="444" class="note">features. Identity, contracts and infrastructure</text>
+  <text x="690" y="462" class="note">stay inside one platform repo until a second</text>
+  <text x="690" y="480" class="note">consumer actually exists.</text>
+
+  <text x="690" y="512" class="note" font-style="italic">Splitting the platform into microservices is not a goal.</text>
+</svg>

@@ -1,0 +1,138 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 720" width="1100" height="720" role="img" aria-labelledby="t d">
+  <title id="t">What a team owns, what is adopted, and what is built</title>
+  <desc id="d">The team owns a manifest, prompts, schemas, evals and its UI. Below the contract, Pydantic AI supplies the runtime, streaming, toolsets, usage and spend limits, approvals, evals, traces and UI protocols. zuchat-platform supplies the manifest schema, compiler, registry, channels, catalog, tenant policy, publish gate, run record and kill switch.</desc>
+  <rect width="1100" height="720" fill="#ffffff"/>
+  <style>
+    .h1{font:700 24px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#0f172a}
+    .sub{font:400 13px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#475569}
+    .kick{font:700 9px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;letter-spacing:1px}
+    .ct{font:700 11.5px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#0f172a}
+    .cs{font:400 9.5px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#64748b}
+    .contract{font:700 11px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#1d4ed8}
+    .note{font:400 11px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#475569}
+  </style>
+  <defs>
+    <marker id="ar" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="#3b82f6"/>
+    </marker>
+  </defs>
+
+  <text x="32" y="46" class="h1">What a team owns, what is adopted, and what is built</text>
+  <text x="32" y="70" class="sub">The runtime is Pydantic AI. The governance is ours. A product team touches neither.</text>
+
+  <!-- owned layer -->
+  <rect x="40" y="100" width="1020" height="128" rx="10" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.6"/>
+  <text x="56" y="124" class="kick" fill="#1d4ed8">PRODUCT TEAM OWNS</text>
+  <rect x="56" y="138" width="188" height="72" rx="7" fill="#ffffff" stroke="#bfdbfe" stroke-width="1.3"/>
+  <text x="70" y="160" class="ct">agent.yaml</text>
+  <text x="70" y="178" class="cs">model alias, tools, budget</text>
+  <text x="70" y="194" class="cs">our schema, not Pydantic's</text>
+  <rect x="256" y="138" width="188" height="72" rx="7" fill="#ffffff" stroke="#bfdbfe" stroke-width="1.3"/>
+  <text x="270" y="160" class="ct">prompts/</text>
+  <text x="270" y="178" class="cs">instructions, in git</text>
+  <text x="270" y="194" class="cs">versioned with the agent</text>
+  <rect x="456" y="138" width="188" height="72" rx="7" fill="#ffffff" stroke="#bfdbfe" stroke-width="1.3"/>
+  <text x="470" y="160" class="ct">schemas/</text>
+  <text x="470" y="178" class="cs">input and output shapes</text>
+  <text x="470" y="194" class="cs">become output_type</text>
+  <rect x="656" y="138" width="188" height="72" rx="7" fill="#ffffff" stroke="#bfdbfe" stroke-width="1.3"/>
+  <text x="670" y="160" class="ct">evals/</text>
+  <text x="670" y="178" class="cs">pydantic-evals dataset</text>
+  <text x="670" y="194" class="cs">the team's quality gate</text>
+  <rect x="856" y="138" width="188" height="72" rx="7" fill="#ffffff" stroke="#bfdbfe" stroke-width="1.3"/>
+  <text x="870" y="160" class="ct">their UI</text>
+  <text x="870" y="178" class="cs">layout and interaction</text>
+  <text x="870" y="194" class="cs">via the SDK, not raw SSE</text>
+
+  <!-- contract -->
+  <line x1="150" y1="228" x2="150" y2="254" stroke="#3b82f6" stroke-width="1.6" marker-end="url(#ar)"/>
+  <line x1="550" y1="228" x2="550" y2="254" stroke="#3b82f6" stroke-width="1.6" marker-end="url(#ar)"/>
+  <line x1="950" y1="228" x2="950" y2="254" stroke="#3b82f6" stroke-width="1.6" marker-end="url(#ar)"/>
+  <rect x="40" y="258" width="1020" height="88" rx="10" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/>
+  <text x="56" y="282" class="kick" fill="#1d4ed8">THE ONLY CONTRACT</text>
+  <rect x="56" y="292" width="480" height="40" rx="6" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.2"/>
+  <text x="70" y="317" class="contract">publish a version · validate → eval → registry</text>
+  <rect x="548" y="292" width="496" height="40" rx="6" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.2"/>
+  <text x="562" y="317" class="contract">call a run · POST /v1/agents/{name}/runs → AG-UI events</text>
+
+  <line x1="200" y1="346" x2="200" y2="392" stroke="#3b82f6" stroke-width="1.6" marker-end="url(#ar)"/>
+  <line x1="550" y1="346" x2="550" y2="392" stroke="#3b82f6" stroke-width="1.6" marker-end="url(#ar)"/>
+  <line x1="900" y1="346" x2="900" y2="392" stroke="#3b82f6" stroke-width="1.6" marker-end="url(#ar)"/>
+
+  <!-- adopted -->
+  <rect x="40" y="398" width="610" height="262" rx="10" fill="#f5f3ff" stroke="#a78bfa" stroke-width="1.6"/>
+  <text x="56" y="422" class="kick" fill="#5b21b6">PYDANTIC AI · ADOPTED (MIT)</text>
+  <text x="634" y="422" class="cs" text-anchor="end">the runtime and everything on the request path</text>
+
+  <rect x="56" y="436" width="186" height="50" rx="7" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.2"/>
+  <text x="68" y="456" class="ct">Agent runtime</text>
+  <text x="68" y="472" class="cs">DeepSeek + many providers</text>
+  <rect x="252" y="436" width="186" height="50" rx="7" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.2"/>
+  <text x="264" y="456" class="ct">run_stream_events</text>
+  <text x="264" y="472" class="cs">typed events, cancellation</text>
+  <rect x="448" y="436" width="186" height="50" rx="7" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.2"/>
+  <text x="460" y="456" class="ct">toolsets</text>
+  <text x="460" y="472" class="cs">FunctionToolset, MCP, OpenAPI</text>
+
+  <rect x="56" y="496" width="186" height="50" rx="7" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.2"/>
+  <text x="68" y="516" class="ct">UsageLimits</text>
+  <text x="68" y="532" class="cs">per-run tokens and requests</text>
+  <rect x="252" y="496" width="186" height="50" rx="7" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.2"/>
+  <text x="264" y="516" class="ct">SpendLimits</text>
+  <text x="264" y="532" class="cs">per tenant and day (0.x harness)</text>
+  <rect x="448" y="496" width="186" height="50" rx="7" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.2"/>
+  <text x="460" y="516" class="ct">deferred approvals</text>
+  <text x="460" y="532" class="cs">pause the run, resume later</text>
+
+  <rect x="56" y="556" width="186" height="50" rx="7" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.2"/>
+  <text x="68" y="576" class="ct">pydantic-evals</text>
+  <text x="68" y="592" class="cs">dataset, cases, report</text>
+  <rect x="252" y="556" width="186" height="50" rx="7" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.2"/>
+  <text x="264" y="576" class="ct">OTel traces</text>
+  <text x="264" y="592" class="cs">every run, model call, tool</text>
+  <rect x="448" y="556" width="186" height="50" rx="7" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.2"/>
+  <text x="460" y="576" class="ct">AG-UI / Vercel</text>
+  <text x="460" y="592" class="cs">browser event protocols</text>
+
+  <!-- built -->
+  <rect x="670" y="398" width="390" height="262" rx="10" fill="#fef2f2" stroke="#fca5a5" stroke-width="1.6"/>
+  <text x="686" y="422" class="kick" fill="#991b1b">ZUCHAT-PLATFORM · BUILT</text>
+  <text x="1044" y="422" class="cs" text-anchor="end">the governance</text>
+
+  <rect x="686" y="436" width="175" height="36" rx="6" fill="#ffffff" stroke="#fecaca" stroke-width="1.2"/>
+  <text x="696" y="450" class="ct" font-size="10.5">manifest schema</text>
+  <text x="696" y="464" class="cs" font-size="8.5">our subset, not theirs</text>
+  <rect x="869" y="436" width="175" height="36" rx="6" fill="#ffffff" stroke="#fecaca" stroke-width="1.2"/>
+  <text x="879" y="450" class="ct" font-size="10.5">compiler</text>
+  <text x="879" y="464" class="cs" font-size="8.5">manifest → Agent</text>
+
+  <rect x="686" y="480" width="175" height="36" rx="6" fill="#ffffff" stroke="#fecaca" stroke-width="1.2"/>
+  <text x="696" y="494" class="ct" font-size="10.5">registry + versions</text>
+  <text x="696" y="508" class="cs" font-size="8.5">immutable, digest-pinned</text>
+  <rect x="869" y="480" width="175" height="36" rx="6" fill="#ffffff" stroke="#fecaca" stroke-width="1.2"/>
+  <text x="879" y="494" class="ct" font-size="10.5">channels + canary</text>
+  <text x="879" y="508" class="cs" font-size="8.5">stable / canary, rollback</text>
+
+  <rect x="686" y="524" width="175" height="36" rx="6" fill="#ffffff" stroke="#fecaca" stroke-width="1.2"/>
+  <text x="696" y="538" class="ct" font-size="10.5">catalog</text>
+  <text x="696" y="552" class="cs" font-size="8.5">GET /v1/agents + schemas</text>
+  <rect x="869" y="524" width="175" height="36" rx="6" fill="#ffffff" stroke="#fecaca" stroke-width="1.2"/>
+  <text x="879" y="538" class="ct" font-size="10.5">tenant policy</text>
+  <text x="879" y="552" class="cs" font-size="8.5">caps, aliases, budgets</text>
+
+  <rect x="686" y="568" width="175" height="36" rx="6" fill="#ffffff" stroke="#fecaca" stroke-width="1.2"/>
+  <text x="696" y="582" class="ct" font-size="10.5">publish gate</text>
+  <text x="696" y="596" class="cs" font-size="8.5">eval + human merge</text>
+  <rect x="869" y="568" width="175" height="36" rx="6" fill="#ffffff" stroke="#fecaca" stroke-width="1.2"/>
+  <text x="879" y="582" class="ct" font-size="10.5">run record + audit</text>
+  <text x="879" y="596" class="cs" font-size="8.5">who ran what, which digest</text>
+
+  <rect x="686" y="612" width="175" height="36" rx="6" fill="#ffffff" stroke="#fecaca" stroke-width="1.2"/>
+  <text x="696" y="626" class="ct" font-size="10.5">tool allowlist</text>
+  <text x="696" y="640" class="cs" font-size="8.5">names, never URLs</text>
+  <rect x="869" y="612" width="175" height="36" rx="6" fill="#ffffff" stroke="#fecaca" stroke-width="1.2"/>
+  <text x="879" y="626" class="ct" font-size="10.5">kill switch</text>
+  <text x="879" y="640" class="cs" font-size="8.5">one agent off, no deploy</text>
+
+  <text x="32" y="700" class="note">Above the contract is data a team edits. On the left is software we adopt. On the right is the governance we build — and the only part that is ours to get wrong.</text>
+</svg>

@@ -1,0 +1,125 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 700" width="1100" height="700" role="img" aria-labelledby="t d">
+  <title id="t">Control plane and data plane on Pydantic AI</title>
+  <desc id="d">The control plane takes manifests from a team repository through schema validation and a pydantic-evals gate into an immutable registry holding the digest, resolved model and compiled policy. The data plane takes run requests through a gateway into a compiled Pydantic AI Agent, which streams events, calls toolsets, enforces usage and spend limits, and calls the DeepSeek provider. Conversation and run records go to Postgres and OTel; deferred tool calls pause for approval and resume.</desc>
+  <rect width="1100" height="700" fill="#ffffff"/>
+  <style>
+    .h1{font:700 24px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#0f172a}
+    .sub{font:400 13px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#475569}
+    .bt{font:700 12.5px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#0f172a}
+    .bd{font:400 10px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#475569}
+    .grp{font:700 10.5px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;letter-spacing:1px}
+    .edge{font:400 9px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#64748b}
+    .note{font:400 11px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#475569}
+    .tag{font:700 8px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#ffffff}
+  </style>
+  <defs>
+    <marker id="g1" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="#7c3aed"/>
+    </marker>
+    <marker id="g2" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="#2563eb"/>
+    </marker>
+  </defs>
+
+  <text x="32" y="46" class="h1">Two planes: what may run, and what happens on a run</text>
+  <text x="32" y="70" class="sub">The registry decides what is allowed. Pydantic AI executes it. Ours is the thin layer that connects the two.</text>
+
+  <!-- control plane -->
+  <rect x="40" y="100" width="380" height="560" rx="12" fill="#f5f3ff" stroke="#c4b5fd" stroke-width="1.6"/>
+  <text x="56" y="126" class="grp" fill="#5b21b6">CONTROL PLANE · OURS</text>
+
+  <rect x="60" y="146" width="340" height="86" rx="8" fill="#ffffff" stroke="#c4b5fd" stroke-width="1.4"/>
+  <text x="74" y="170" class="bt">team repo: agents-support/</text>
+  <text x="74" y="190" class="bd">agent.yaml · prompts/ · schemas/ · evals/</text>
+  <text x="74" y="208" class="bd">a pull request, not a service</text>
+
+  <line x1="230" y1="232" x2="230" y2="272" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#g1)"/>
+  <text x="240" y="256" class="edge">PR</text>
+
+  <rect x="60" y="276" width="340" height="86" rx="8" fill="#ffffff" stroke="#c4b5fd" stroke-width="1.4"/>
+  <text x="74" y="300" class="bt">validate + eval gate</text>
+  <text x="74" y="320" class="bd">our schema · policy · pydantic-evals</text>
+  <text x="74" y="338" class="bd">a failing eval cannot be published</text>
+
+  <line x1="230" y1="362" x2="230" y2="402" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#g1)"/>
+  <text x="240" y="386" class="edge">pass</text>
+
+  <rect x="60" y="406" width="340" height="86" rx="8" fill="#ffffff" stroke="#c4b5fd" stroke-width="1.4"/>
+  <text x="74" y="430" class="bt">registry — immutable</text>
+  <text x="74" y="450" class="bd">triage@1.4.0 · digest · channels</text>
+  <text x="74" y="468" class="bd">resolved model + compiled policy</text>
+
+  <line x1="230" y1="492" x2="230" y2="532" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#g1)"/>
+  <text x="240" y="516" class="edge">record</text>
+
+  <rect x="60" y="536" width="340" height="74" rx="8" fill="#ffffff" stroke="#c4b5fd" stroke-width="1.4"/>
+  <text x="74" y="560" class="bt">publish audit</text>
+  <text x="74" y="580" class="bd">who published what, when,</text>
+  <text x="74" y="596" class="bd">with the eval report attached</text>
+
+  <!-- data plane -->
+  <rect x="450" y="100" width="610" height="560" rx="12" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.6"/>
+  <text x="466" y="126" class="grp" fill="#1d4ed8">DATA PLANE · ON PYDANTIC AI</text>
+
+  <rect x="470" y="146" width="270" height="70" rx="8" fill="#ffffff" stroke="#93c5fd" stroke-width="1.4"/>
+  <text x="484" y="170" class="bt">web-&lt;surface&gt; (SDK)</text>
+  <text x="484" y="190" class="bd">catalog-driven or bespoke</text>
+  <text x="484" y="206" class="bd">AG-UI events, no SSE parser</text>
+
+  <rect x="760" y="146" width="280" height="70" rx="8" fill="#ffffff" stroke="#93c5fd" stroke-width="1.4"/>
+  <text x="774" y="170" class="bt">another agent or API client</text>
+  <text x="774" y="190" class="bd">same contract, same events</text>
+  <text x="774" y="206" class="bd">no special-casing per consumer</text>
+
+  <line x1="600" y1="216" x2="600" y2="246" stroke="#2563eb" stroke-width="1.5" marker-end="url(#g2)"/>
+  <line x1="900" y1="216" x2="900" y2="246" stroke="#2563eb" stroke-width="1.5" marker-end="url(#g2)"/>
+
+  <rect x="470" y="250" width="570" height="66" rx="8" fill="#ffffff" stroke="#3b82f6" stroke-width="1.7"/>
+  <text x="484" y="274" class="bt">POST /v1/agents/{name}/runs</text>
+  <text x="484" y="294" class="bd">resolve channel → version → digest · envelope adds version + digest to run.started</text>
+  <text x="484" y="310" class="bd">tenant from identity · run id · OTel span per run</text>
+
+  <line x1="620" y1="316" x2="620" y2="346" stroke="#2563eb" stroke-width="1.5" marker-end="url(#g2)"/>
+
+  <!-- pydantic agent -->
+  <rect x="470" y="350" width="330" height="150" rx="8" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.7"/>
+  <text x="484" y="374" class="bt">Pydantic AI Agent (compiled)</text>
+  <text x="484" y="396" class="bd">run_stream_events · UsageLimits</text>
+  <text x="484" y="414" class="bd">toolsets: FunctionToolset per tool</text>
+  <text x="484" y="432" class="bd">capabilities: SpendLimits · Audit · Safety</text>
+  <text x="484" y="450" class="bd">output_type: schema + DeferredToolRequests</text>
+  <text x="484" y="468" class="bd">model: alias resolved at publish, pinned</text>
+  <text x="484" y="486" class="bd" fill="#6d28d9">same digest → same behaviour</text>
+
+  <line x1="800" y1="385" x2="846" y2="385" stroke="#2563eb" stroke-width="1.5" marker-end="url(#g2)"/>
+  <rect x="850" y="350" width="190" height="70" rx="8" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.4"/>
+  <text x="864" y="374" class="bt">DeepSeek API</text>
+  <text x="864" y="394" class="bd">pydantic-ai provider</text>
+  <text x="864" y="410" class="bd">key in the task role only</text>
+
+  <line x1="846" y1="476" x2="804" y2="476" stroke="#2563eb" stroke-width="1.4" marker-end="url(#g2)"/>
+  <text x="825" y="468" class="edge" text-anchor="middle">tools</text>
+  <rect x="850" y="450" width="190" height="60" rx="8" fill="#ffffff" stroke="#93c5fd" stroke-width="1.4"/>
+  <text x="864" y="474" class="bt" font-size="12">tool registry</text>
+  <text x="864" y="494" class="bd">names → FunctionToolset</text>
+
+  <line x1="600" y1="500" x2="600" y2="536" stroke="#2563eb" stroke-width="1.5" marker-end="url(#g2)"/>
+  <rect x="470" y="540" width="330" height="70" rx="8" fill="#ffffff" stroke="#93c5fd" stroke-width="1.4"/>
+  <text x="484" y="564" class="bt">Conversation + run record</text>
+  <text x="484" y="584" class="bd">Postgres · one OTel trace per run</text>
+  <text x="484" y="600" class="bd">tokens, cost, tool calls, decision</text>
+
+  <path d="M 780 500 L 846 556" fill="none" stroke="#2563eb" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#g2)"/>
+  <text x="754" y="524" class="edge">pause</text>
+  <rect x="850" y="540" width="190" height="70" rx="8" fill="#ffffff" stroke="#93c5fd" stroke-width="1.4"/>
+  <text x="864" y="564" class="bt" font-size="12">approval + resume</text>
+  <text x="864" y="584" class="bd">DeferredToolRequests</text>
+  <text x="864" y="600" class="bd">→ DeferredToolResults</text>
+
+  <!-- registry pins the data plane -->
+  <path d="M 400 449 L 430 449 L 430 283 L 466 283" fill="none" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#g1)"/>
+
+  <text x="466" y="636" class="bd" font-style="italic">the data plane reads a pinned version and its policy; it never writes either</text>
+
+  <text x="32" y="682" class="note">Pydantic AI owns the request path. The registry owns what is allowed on it. That split is the platform.</text>
+</svg>
