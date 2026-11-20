@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 552" width="1100" height="552" role="img" aria-labelledby="t d">
-  <title id="t">Rollout: build the platform before splitting repositories</title>
-  <desc id="d">Six stages. P0 and P1 happen inside today's repository and add no repos. P2 to P4 build one platform service with tools, a control plane and an SDK. P5 splits repositories only where teams need separate permissions or cadence.</desc>
+  <title id="t">Rollout: swap the runtime, then build governance, then split repos</title>
+  <desc id="d">Six stages. P0 and P1 happen inside today's repository and add no repos. P2 to P4 build tools, policy, catalog and the SDK. P5 splits repositories only where teams need separate permissions or cadence. Total is about six to eight weeks.</desc>
   <rect width="1100" height="552" fill="#ffffff"/>
   <style>
     .h1{font:700 24px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#0f172a}
@@ -20,8 +20,8 @@
     </marker>
   </defs>
 
-  <text x="32" y="46" class="h1">Rollout: build the platform before splitting repositories</text>
-  <text x="32" y="70" class="sub">P0–P1 happen inside today's repo and add no repositories. The split is P5, and by then it is mechanical.</text>
+  <text x="32" y="46" class="h1">Rollout: swap the runtime, then build governance, then split</text>
+  <text x="32" y="70" class="sub">P0–P1 add no repositories. Pydantic AI provides the runtime, so the build is the control plane. About 6–8 weeks to self-service.</text>
 
   <line x1="40" y1="124" x2="1046" y2="124" stroke="#94a3b8" stroke-width="1.6" marker-end="url(#tl)"/>
 
@@ -29,17 +29,17 @@
   <circle cx="120" cy="124" r="15" fill="#10b981"/>
   <text x="120" y="129" class="num" text-anchor="middle">0</text>
   <rect x="40" y="148" width="160" height="282" rx="8" fill="#ecfdf5" stroke="#34d399" stroke-width="1.6"/>
-  <text x="52" y="174" class="name">Agent run abstraction</text>
-  <text x="52" y="194" class="delta">1–2 wks · same repo</text>
+  <text x="52" y="174" class="name">Runtime swap</text>
+  <text x="52" y="194" class="delta">1 wk · same repo</text>
   <line x1="52" y1="204" x2="188" y2="204" stroke="#a7f3d0" stroke-width="1.2"/>
   <text x="52" y="222" class="kick">DO</text>
-  <text x="52" y="240" class="body">AgentSpec from YAML</text>
-  <text x="52" y="256" class="body">one run endpoint</text>
-  <text x="52" y="272" class="body">typed event stream</text>
-  <text x="52" y="288" class="body">port chat to chat@1</text>
+  <text x="52" y="240" class="body">manifest schema</text>
+  <text x="52" y="256" class="body">compiler → Agent</text>
+  <text x="52" y="272" class="body">run_stream_events</text>
+  <text x="52" y="288" class="body">delete deepseek.py</text>
   <text x="52" y="318" class="kick">EXIT</text>
-  <text x="52" y="336" class="body">a second agent ships</text>
-  <text x="52" y="352" class="body">with no Python</text>
+  <text x="52" y="336" class="body">chat runs generic</text>
+  <text x="52" y="352" class="body">second agent = YAML</text>
   <text x="52" y="378" class="kick">TRIGGER</text>
   <text x="52" y="394" class="trig">a second agent is</text>
   <text x="52" y="408" class="trig">planned</text>
@@ -48,16 +48,16 @@
   <circle cx="292" cy="124" r="15" fill="#10b981"/>
   <text x="292" y="129" class="num" text-anchor="middle">1</text>
   <rect x="212" y="148" width="160" height="282" rx="8" fill="#ecfdf5" stroke="#34d399" stroke-width="1.6"/>
-  <text x="224" y="174" class="name">Eval gate + registry</text>
-  <text x="224" y="194" class="delta">1–2 wks · same repo</text>
+  <text x="224" y="174" class="name">Registry + evals</text>
+  <text x="224" y="194" class="delta">1 wk · same repo</text>
   <line x1="224" y1="204" x2="360" y2="204" stroke="#a7f3d0" stroke-width="1.2"/>
   <text x="224" y="222" class="kick">DO</text>
-  <text x="224" y="240" class="body">validate manifests</text>
-  <text x="224" y="256" class="body">recorded fixtures</text>
-  <text x="224" y="272" class="body">immutable versions</text>
+  <text x="224" y="240" class="body">Postgres registry</text>
+  <text x="224" y="256" class="body">pydantic-evals in CI</text>
+  <text x="224" y="272" class="body">versions + channels</text>
   <text x="224" y="318" class="kick">EXIT</text>
   <text x="224" y="336" class="body">a failed eval cannot</text>
-  <text x="224" y="352" class="body">be published</text>
+  <text x="224" y="352" class="body">publish</text>
   <text x="224" y="378" class="kick">TRIGGER</text>
   <text x="224" y="394" class="trig">more than one agent</text>
 
@@ -65,16 +65,16 @@
   <circle cx="464" cy="124" r="15" fill="#f59e0b"/>
   <text x="464" y="129" class="num" text-anchor="middle">2</text>
   <rect x="384" y="148" width="160" height="282" rx="8" fill="#fffbeb" stroke="#fbbf24" stroke-width="1.6"/>
-  <text x="396" y="174" class="name">Tools + policy</text>
-  <text x="396" y="194" class="delta">2–4 wks</text>
+  <text x="396" y="174" class="name">Tools + approvals</text>
+  <text x="396" y="194" class="delta">1–2 wks</text>
   <line x1="396" y1="204" x2="532" y2="204" stroke="#fde68a" stroke-width="1.2"/>
   <text x="396" y="222" class="kick">DO</text>
-  <text x="396" y="240" class="body">typed tool registry</text>
-  <text x="396" y="256" class="body">allowlist and caps</text>
-  <text x="396" y="272" class="body">safety profiles</text>
+  <text x="396" y="240" class="body">FunctionToolset</text>
+  <text x="396" y="256" class="body">allowlist + creds</text>
+  <text x="396" y="272" class="body">DeferredToolRequests</text>
   <text x="396" y="318" class="kick">EXIT</text>
-  <text x="396" y="336" class="body">a tool agent ships</text>
-  <text x="396" y="352" class="body">with no platform code</text>
+  <text x="396" y="336" class="body">a tool agent needs no</text>
+  <text x="396" y="352" class="body">platform code</text>
   <text x="396" y="378" class="kick">TRIGGER</text>
   <text x="396" y="394" class="trig">agents must act,</text>
   <text x="396" y="408" class="trig">not just answer</text>
@@ -83,15 +83,15 @@
   <circle cx="636" cy="124" r="15" fill="#f59e0b"/>
   <text x="636" y="129" class="num" text-anchor="middle">3</text>
   <rect x="556" y="148" width="160" height="282" rx="8" fill="#fffbeb" stroke="#fbbf24" stroke-width="1.6"/>
-  <text x="568" y="174" class="name">Control plane</text>
-  <text x="568" y="194" class="delta">2–3 wks</text>
+  <text x="568" y="174" class="name">Policy + catalog</text>
+  <text x="568" y="194" class="delta">1–2 wks</text>
   <line x1="568" y1="204" x2="704" y2="204" stroke="#fde68a" stroke-width="1.2"/>
   <text x="568" y="222" class="kick">DO</text>
-  <text x="568" y="240" class="body">publish API</text>
-  <text x="568" y="256" class="body">channels and canary</text>
-  <text x="568" y="272" class="body">budgets, audit, kill</text>
+  <text x="568" y="240" class="body">SpendLimits store</text>
+  <text x="568" y="256" class="body">catalog + run record</text>
+  <text x="568" y="272" class="body">kill switch</text>
   <text x="568" y="318" class="kick">EXIT</text>
-  <text x="568" y="336" class="body">a team publishes and</text>
+  <text x="568" y="336" class="body">team publishes and</text>
   <text x="568" y="352" class="body">rolls back alone</text>
   <text x="568" y="378" class="kick">TRIGGER</text>
   <text x="568" y="394" class="trig">more than one team</text>
@@ -101,14 +101,14 @@
   <text x="808" y="129" class="num" text-anchor="middle">4</text>
   <rect x="728" y="148" width="160" height="282" rx="8" fill="#fffbeb" stroke="#fbbf24" stroke-width="1.6"/>
   <text x="740" y="174" class="name">SDK + UI kit</text>
-  <text x="740" y="194" class="delta">1–2 wks</text>
+  <text x="740" y="194" class="delta">1 wk</text>
   <line x1="740" y1="204" x2="876" y2="204" stroke="#fde68a" stroke-width="1.2"/>
   <text x="740" y="222" class="kick">DO</text>
-  <text x="740" y="240" class="body">generated clients</text>
-  <text x="740" y="256" class="body">streaming hooks</text>
+  <text x="740" y="240" class="body">AG-UI React hook</text>
+  <text x="740" y="256" class="body">generated clients</text>
   <text x="740" y="272" class="body">schema renderer</text>
   <text x="740" y="318" class="kick">EXIT</text>
-  <text x="740" y="336" class="body">a new agent UI is a</text>
+  <text x="740" y="336" class="body">new agent UI is a</text>
   <text x="740" y="352" class="body">config change</text>
   <text x="740" y="378" class="kick">TRIGGER</text>
   <text x="740" y="394" class="trig">a UI team exists</text>
@@ -140,5 +140,5 @@
   <text x="980" y="478" class="brk" fill="#475569" text-anchor="middle">repos follow teams</text>
 
   <text x="32" y="516" class="note">Each stage's exit test is a team shipping without reading the platform. If it cannot, the stage is not done.</text>
-  <text x="32" y="536" class="note">P0 alone is a legitimate stopping point: it removes the worst coupling for two weeks of work.</text>
+  <text x="32" y="536" class="note">P0 alone is a legitimate stopping point: one week, two deleted modules, and the worst coupling is gone.</text>
 </svg>

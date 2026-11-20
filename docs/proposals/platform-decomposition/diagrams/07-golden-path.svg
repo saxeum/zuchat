@@ -48,8 +48,8 @@
   <text x="316" y="198" class="bd">write fixtures and</text>
   <text x="316" y="213" class="bd">set the pass-rate bar</text>
   <text x="316" y="236" class="kick">PLATFORM</text>
-  <text x="316" y="254" class="bd">runs the suite against</text>
-  <text x="316" y="269" class="bd">recorded outputs</text>
+  <text x="316" y="254" class="bd">runs the pydantic-evals</text>
+  <text x="316" y="269" class="bd">dataset in CI</text>
   <rect x="316" y="284" width="92" height="20" rx="5" fill="#dbeafe"/>
   <text x="362" y="298" class="time" text-anchor="middle">CI minutes</text>
 
@@ -66,7 +66,7 @@
   <text x="576" y="213" class="bd">a human merges it</text>
   <text x="576" y="236" class="kick">PLATFORM</text>
   <text x="576" y="254" class="bd">immutable version,</text>
-  <text x="576" y="269" class="bd">channel, eval report</text>
+  <text x="576" y="269" class="bd">digest, eval report</text>
   <rect x="576" y="284" width="92" height="20" rx="5" fill="#dbeafe"/>
   <text x="622" y="298" class="time" text-anchor="middle">one PR</text>
 
@@ -82,7 +82,7 @@
   <text x="836" y="198" class="bd">a catalog page, or an</text>
   <text x="836" y="213" class="bd">SDK call in their UI</text>
   <text x="836" y="236" class="kick">PLATFORM</text>
-  <text x="836" y="254" class="bd">typed events, retries,</text>
+  <text x="836" y="254" class="bd">AG-UI events, retries,</text>
   <text x="836" y="269" class="bd">no per-agent code</text>
   <rect x="836" y="284" width="132" height="20" rx="5" fill="#dbeafe"/>
   <text x="902" y="298" class="time" text-anchor="middle">no runtime change</text>

@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 700" width="1100" height="700" role="img" aria-labelledby="t d">
-  <title id="t">What a product team owns and what it never needs to know</title>
-  <desc id="d">The team owns a manifest, prompts, schemas, evals and its UI. A single contract of publish and run sits between the team and the platform. Below that line the platform owns provider keys, streaming, quotas, tools, identity, infrastructure, evals and deploy, and a team never reads that code.</desc>
-  <rect width="1100" height="700" fill="#ffffff"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 720" width="1100" height="720" role="img" aria-labelledby="t d">
+  <title id="t">What a team owns, what is adopted, and what is built</title>
+  <desc id="d">The team owns a manifest, prompts, schemas, evals and its UI. Below the contract, Pydantic AI supplies the runtime, streaming, toolsets, usage and spend limits, approvals, evals, traces and UI protocols. zuchat-platform supplies the manifest schema, compiler, registry, channels, catalog, tenant policy, publish gate, run record and kill switch.</desc>
+  <rect width="1100" height="720" fill="#ffffff"/>
   <style>
     .h1{font:700 24px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#0f172a}
     .sub{font:400 13px 'Inter','Segoe UI',Helvetica,Arial,sans-serif;fill:#475569}
@@ -17,8 +17,8 @@
     </marker>
   </defs>
 
-  <text x="32" y="46" class="h1">What a team owns, and what it must never need to know</text>
-  <text x="32" y="70" class="sub">The platform is the red area. If a product team has to cross that line, the abstraction leaked.</text>
+  <text x="32" y="46" class="h1">What a team owns, what is adopted, and what is built</text>
+  <text x="32" y="70" class="sub">The runtime is Pydantic AI. The governance is ours. A product team touches neither.</text>
 
   <!-- owned layer -->
   <rect x="40" y="100" width="1020" height="128" rx="10" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.6"/>
@@ -26,7 +26,7 @@
   <rect x="56" y="138" width="188" height="72" rx="7" fill="#ffffff" stroke="#bfdbfe" stroke-width="1.3"/>
   <text x="70" y="160" class="ct">agent.yaml</text>
   <text x="70" y="178" class="cs">model alias, tools, budget</text>
-  <text x="70" y="194" class="cs">owner, labels, safety profile</text>
+  <text x="70" y="194" class="cs">our schema, not Pydantic's</text>
   <rect x="256" y="138" width="188" height="72" rx="7" fill="#ffffff" stroke="#bfdbfe" stroke-width="1.3"/>
   <text x="270" y="160" class="ct">prompts/</text>
   <text x="270" y="178" class="cs">instructions, in git</text>
@@ -34,10 +34,10 @@
   <rect x="456" y="138" width="188" height="72" rx="7" fill="#ffffff" stroke="#bfdbfe" stroke-width="1.3"/>
   <text x="470" y="160" class="ct">schemas/</text>
   <text x="470" y="178" class="cs">input and output shapes</text>
-  <text x="470" y="194" class="cs">typed for the UI and SDK</text>
+  <text x="470" y="194" class="cs">become output_type</text>
   <rect x="656" y="138" width="188" height="72" rx="7" fill="#ffffff" stroke="#bfdbfe" stroke-width="1.3"/>
   <text x="670" y="160" class="ct">evals/</text>
-  <text x="670" y="178" class="cs">fixtures and pass-rate bar</text>
+  <text x="670" y="178" class="cs">pydantic-evals dataset</text>
   <text x="670" y="194" class="cs">the team's quality gate</text>
   <rect x="856" y="138" width="188" height="72" rx="7" fill="#ffffff" stroke="#bfdbfe" stroke-width="1.3"/>
   <text x="870" y="160" class="ct">their UI</text>
@@ -53,54 +53,86 @@
   <rect x="56" y="292" width="480" height="40" rx="6" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.2"/>
   <text x="70" y="317" class="contract">publish a version · validate → eval → registry</text>
   <rect x="548" y="292" width="496" height="40" rx="6" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.2"/>
-  <text x="562" y="317" class="contract">call a run · POST /v1/agents/{name}/runs → typed events</text>
+  <text x="562" y="317" class="contract">call a run · POST /v1/agents/{name}/runs → AG-UI events</text>
 
-  <!-- ignored layer -->
-  <line x1="150" y1="346" x2="150" y2="392" stroke="#3b82f6" stroke-width="1.6" marker-end="url(#ar)"/>
+  <line x1="200" y1="346" x2="200" y2="392" stroke="#3b82f6" stroke-width="1.6" marker-end="url(#ar)"/>
   <line x1="550" y1="346" x2="550" y2="392" stroke="#3b82f6" stroke-width="1.6" marker-end="url(#ar)"/>
-  <line x1="950" y1="346" x2="950" y2="392" stroke="#3b82f6" stroke-width="1.6" marker-end="url(#ar)"/>
+  <line x1="900" y1="346" x2="900" y2="392" stroke="#3b82f6" stroke-width="1.6" marker-end="url(#ar)"/>
 
-  <rect x="40" y="398" width="1020" height="248" rx="10" fill="#fef2f2" stroke="#fca5a5" stroke-width="1.6"/>
-  <text x="56" y="422" class="kick" fill="#991b1b">PLATFORM OWNS · A TEAM NEVER READS THIS</text>
+  <!-- adopted -->
+  <rect x="40" y="398" width="610" height="262" rx="10" fill="#f5f3ff" stroke="#a78bfa" stroke-width="1.6"/>
+  <text x="56" y="422" class="kick" fill="#5b21b6">PYDANTIC AI · ADOPTED (MIT)</text>
+  <text x="634" y="422" class="cs" text-anchor="end">the runtime and everything on the request path</text>
 
-  <rect x="56" y="438" width="232" height="52" rx="7" fill="#ffffff" stroke="#fecaca" stroke-width="1.2"/>
-  <text x="68" y="458" class="ct">provider keys</text>
-  <text x="68" y="476" class="cs">model routing, fallback, price</text>
-  <rect x="302" y="438" width="232" height="52" rx="7" fill="#ffffff" stroke="#fecaca" stroke-width="1.2"/>
-  <text x="314" y="458" class="ct">token accounting</text>
-  <text x="314" y="476" class="cs">cost, usage, attribution</text>
-  <rect x="548" y="438" width="232" height="52" rx="7" fill="#ffffff" stroke="#fecaca" stroke-width="1.2"/>
-  <text x="560" y="458" class="ct">streaming protocol</text>
-  <text x="560" y="476" class="cs">frames, heartbeats, cancellation</text>
-  <rect x="794" y="438" width="232" height="52" rx="7" fill="#ffffff" stroke="#fecaca" stroke-width="1.2"/>
-  <text x="806" y="458" class="ct">retries and timeouts</text>
-  <text x="806" y="476" class="cs">provider and tool failure modes</text>
+  <rect x="56" y="436" width="186" height="50" rx="7" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.2"/>
+  <text x="68" y="456" class="ct">Agent runtime</text>
+  <text x="68" y="472" class="cs">DeepSeek + many providers</text>
+  <rect x="252" y="436" width="186" height="50" rx="7" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.2"/>
+  <text x="264" y="456" class="ct">run_stream_events</text>
+  <text x="264" y="472" class="cs">typed events, cancellation</text>
+  <rect x="448" y="436" width="186" height="50" rx="7" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.2"/>
+  <text x="460" y="456" class="ct">toolsets</text>
+  <text x="460" y="472" class="cs">FunctionToolset, MCP, OpenAPI</text>
 
-  <rect x="56" y="500" width="232" height="52" rx="7" fill="#ffffff" stroke="#fecaca" stroke-width="1.2"/>
-  <text x="68" y="520" class="ct">quota structures</text>
-  <text x="68" y="538" class="cs">shared counters, per tenant</text>
-  <rect x="302" y="500" width="232" height="52" rx="7" fill="#ffffff" stroke="#fecaca" stroke-width="1.2"/>
-  <text x="314" y="520" class="ct">cookies and JWT</text>
-  <text x="314" y="538" class="cs">session checks, rotation, clock</text>
-  <rect x="548" y="500" width="232" height="52" rx="7" fill="#ffffff" stroke="#fecaca" stroke-width="1.2"/>
-  <text x="560" y="520" class="ct">tool sandbox</text>
-  <text x="560" y="538" class="cs">allowlist, call caps, credentials</text>
-  <rect x="794" y="500" width="232" height="52" rx="7" fill="#ffffff" stroke="#fecaca" stroke-width="1.2"/>
-  <text x="806" y="520" class="ct">Terraform and IAM</text>
-  <text x="806" y="538" class="cs">ALB, tasks, secrets, roles</text>
+  <rect x="56" y="496" width="186" height="50" rx="7" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.2"/>
+  <text x="68" y="516" class="ct">UsageLimits</text>
+  <text x="68" y="532" class="cs">per-run tokens and requests</text>
+  <rect x="252" y="496" width="186" height="50" rx="7" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.2"/>
+  <text x="264" y="516" class="ct">SpendLimits</text>
+  <text x="264" y="532" class="cs">per tenant and day (0.x harness)</text>
+  <rect x="448" y="496" width="186" height="50" rx="7" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.2"/>
+  <text x="460" y="516" class="ct">deferred approvals</text>
+  <text x="460" y="532" class="cs">pause the run, resume later</text>
 
-  <rect x="56" y="562" width="232" height="52" rx="7" fill="#ffffff" stroke="#fecaca" stroke-width="1.2"/>
-  <text x="68" y="582" class="ct">registry</text>
-  <text x="68" y="600" class="cs">immutable versions, channels</text>
-  <rect x="302" y="562" width="232" height="52" rx="7" fill="#ffffff" stroke="#fecaca" stroke-width="1.2"/>
-  <text x="314" y="582" class="ct">eval harness</text>
-  <text x="314" y="600" class="cs">fixtures, pass-rate gate</text>
-  <rect x="548" y="562" width="232" height="52" rx="7" fill="#ffffff" stroke="#fecaca" stroke-width="1.2"/>
-  <text x="560" y="582" class="ct">traces and alarms</text>
-  <text x="560" y="600" class="cs">one trace per run, per-agent SLOs</text>
-  <rect x="794" y="562" width="232" height="52" rx="7" fill="#ffffff" stroke="#fecaca" stroke-width="1.2"/>
-  <text x="806" y="582" class="ct">deploy and rollback</text>
-  <text x="806" y="600" class="cs">canary, pin, kill switch</text>
+  <rect x="56" y="556" width="186" height="50" rx="7" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.2"/>
+  <text x="68" y="576" class="ct">pydantic-evals</text>
+  <text x="68" y="592" class="cs">dataset, cases, report</text>
+  <rect x="252" y="556" width="186" height="50" rx="7" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.2"/>
+  <text x="264" y="576" class="ct">OTel traces</text>
+  <text x="264" y="592" class="cs">every run, model call, tool</text>
+  <rect x="448" y="556" width="186" height="50" rx="7" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.2"/>
+  <text x="460" y="576" class="ct">AG-UI / Vercel</text>
+  <text x="460" y="592" class="cs">browser event protocols</text>
 
-  <text x="32" y="678" class="note">Above the contract is data a team edits. Below it is code one team maintains. The width of that gap is the platform.</text>
+  <!-- built -->
+  <rect x="670" y="398" width="390" height="262" rx="10" fill="#fef2f2" stroke="#fca5a5" stroke-width="1.6"/>
+  <text x="686" y="422" class="kick" fill="#991b1b">ZUCHAT-PLATFORM · BUILT</text>
+  <text x="1044" y="422" class="cs" text-anchor="end">the governance</text>
+
+  <rect x="686" y="436" width="175" height="36" rx="6" fill="#ffffff" stroke="#fecaca" stroke-width="1.2"/>
+  <text x="696" y="450" class="ct" font-size="10.5">manifest schema</text>
+  <text x="696" y="464" class="cs" font-size="8.5">our subset, not theirs</text>
+  <rect x="869" y="436" width="175" height="36" rx="6" fill="#ffffff" stroke="#fecaca" stroke-width="1.2"/>
+  <text x="879" y="450" class="ct" font-size="10.5">compiler</text>
+  <text x="879" y="464" class="cs" font-size="8.5">manifest → Agent</text>
+
+  <rect x="686" y="480" width="175" height="36" rx="6" fill="#ffffff" stroke="#fecaca" stroke-width="1.2"/>
+  <text x="696" y="494" class="ct" font-size="10.5">registry + versions</text>
+  <text x="696" y="508" class="cs" font-size="8.5">immutable, digest-pinned</text>
+  <rect x="869" y="480" width="175" height="36" rx="6" fill="#ffffff" stroke="#fecaca" stroke-width="1.2"/>
+  <text x="879" y="494" class="ct" font-size="10.5">channels + canary</text>
+  <text x="879" y="508" class="cs" font-size="8.5">stable / canary, rollback</text>
+
+  <rect x="686" y="524" width="175" height="36" rx="6" fill="#ffffff" stroke="#fecaca" stroke-width="1.2"/>
+  <text x="696" y="538" class="ct" font-size="10.5">catalog</text>
+  <text x="696" y="552" class="cs" font-size="8.5">GET /v1/agents + schemas</text>
+  <rect x="869" y="524" width="175" height="36" rx="6" fill="#ffffff" stroke="#fecaca" stroke-width="1.2"/>
+  <text x="879" y="538" class="ct" font-size="10.5">tenant policy</text>
+  <text x="879" y="552" class="cs" font-size="8.5">caps, aliases, budgets</text>
+
+  <rect x="686" y="568" width="175" height="36" rx="6" fill="#ffffff" stroke="#fecaca" stroke-width="1.2"/>
+  <text x="696" y="582" class="ct" font-size="10.5">publish gate</text>
+  <text x="696" y="596" class="cs" font-size="8.5">eval + human merge</text>
+  <rect x="869" y="568" width="175" height="36" rx="6" fill="#ffffff" stroke="#fecaca" stroke-width="1.2"/>
+  <text x="879" y="582" class="ct" font-size="10.5">run record + audit</text>
+  <text x="879" y="596" class="cs" font-size="8.5">who ran what, which digest</text>
+
+  <rect x="686" y="612" width="175" height="36" rx="6" fill="#ffffff" stroke="#fecaca" stroke-width="1.2"/>
+  <text x="696" y="626" class="ct" font-size="10.5">tool allowlist</text>
+  <text x="696" y="640" class="cs" font-size="8.5">names, never URLs</text>
+  <rect x="869" y="612" width="175" height="36" rx="6" fill="#ffffff" stroke="#fecaca" stroke-width="1.2"/>
+  <text x="879" y="626" class="ct" font-size="10.5">kill switch</text>
+  <text x="879" y="640" class="cs" font-size="8.5">one agent off, no deploy</text>
+
+  <text x="32" y="700" class="note">Above the contract is data a team edits. On the left is software we adopt. On the right is the governance we build — and the only part that is ours to get wrong.</text>
 </svg>

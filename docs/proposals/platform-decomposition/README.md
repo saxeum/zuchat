@@ -1,481 +1,464 @@
-# zuchat as an agent platform
+# zuchat as an agent platform, on Pydantic AI
 
-**What product teams own, what the platform hides, and why splitting repositories is the last step.**
+**Adopt the runtime. Build the governance layer. Repositories follow teams.**
 
-Status: second draft · Date: 2026-11-20 · Replaces the repo-split-first recommendation
-
----
-
-## 0. What changed, and why
-
-The first draft answered "how do we split this into repos". That is a **delivery platform**: teams
-deploy independently, but every team still has to understand the runtime to ship anything.
-
-It does not answer the real problem. A product team planning a new agent — or a new UI that
-consumes agents — still has to know how the provider is called, how streaming frames are shaped,
-where quotas live, how sessions are signed, and how a model choice reaches production. **Splitting
-that into more repositories multiplies the number of things they must understand.**
-
-The correction, in one line:
-
-> **A platform is the set of things a product team does not need to know.**
-
-Repositories are a consequence of team boundaries. They are not the boundary itself. **The boundary
-is a contract**: a declarative agent definition, one run API, one SDK. Until that exists, no amount
-of repo splitting produces a platform — it produces a distributed monolith with more checkout
-steps.
-
-The order therefore inverts: build the agent abstraction and its contracts **inside the current
-repo**, prove it with a team that did not write it, and split repositories only where teams and
-cadence actually differ.
+Status: third draft · Date: 2026-11-20 · Supersedes the framework-agnostic draft
+Assumes: `pydantic-ai` 2.71 as the runtime core, `pydantic-evals` for the quality gate
 
 ---
 
-## 1. The test: can a new team ship without reading the core?
+## 0. What changed
 
-### 1.1 What adding an agent costs today
+The previous draft described the right shape — an agent is a versioned artifact, a run is one typed
+contract, product teams own manifests — but left every piece to be built.
 
-There is no agent in the codebase. `grep -ri agent src/zuchat` returns **zero** matches. What exists
-is a single chat call:
+Reading Pydantic AI changes the build list materially:
 
-- `deepseek.py:49` sends exactly `messages: [{"role": "user", "content": message}]` — no system
-  prompt, no tools, no history.
-- `api_routes.py:29` accepts `message: str` (max 4,000 chars) — the API surface is a string, not a
-  typed agent input.
-- `static/app.js:355` parses the SSE stream itself, against one hardcoded endpoint.
+- **Agent definition, tools, streaming, retries, provider clients, usage limits, spend limits,
+  conversation persistence, approvals, tracing, evals and UI event protocols already exist** as
+  libraries. Rebuilding them would be the second mechanism for a solved problem.
+- **What does not exist** is everything organizational: an immutable registry with channels, a
+  compiler that turns a *restricted* manifest into an agent, a catalog your UIs can discover, tenant
+  policy, and the publish gate. That is the platform.
 
-So "ship a new agent" today means changing all of this:
+So the split is now explicit: **adopt the runtime, build the control plane.** The interesting design
+work moves from "how do we call a model and stream it" to "what are teams allowed to declare, and
+what can they not reach".
 
-| # | File | Why it must change |
+> One line: Pydantic AI is the engine. zuchat-platform is the keys, the odometer, the registration
+> papers, and the rule that only licensed drivers get them.
+
+### 0.1 The starting point
+
+There is no agent in the codebase. `grep -ri agent src/zuchat` returns **zero** matches.
+`deepseek.py:49` sends exactly one user message, `api_routes.py:29` accepts `message: str`, and
+`static/app.js:355` parses the SSE stream itself. So "ship a new agent" today means touching:
+
+| # | File | Why |
 | --- | --- | --- |
-| 1 | `api_routes.py` | new route, or a branch inside the chat handler, plus quota wiring |
-| 2 | `deepseek.py` | system prompt / tools / model choice / message shape |
-| 3 | `config.py` | model, limits and budget settings |
-| 4 | `ratelimit.py` | budget keys, if the agent is metered differently |
-| 5 | `static/app.js` + HTML/CSS | the UI, its own stream parser, its own error handling |
-| 6 | `terraform/ecs/ecs.tf` + `variables.tf` | every new settings value as a task environment entry |
-| 7 | `tests/test_main.py` | app-level tests that import the whole app |
-| 8 | `app.py` | router registration, if it is a new module |
+| 1 | `api_routes.py` | new route or branch, plus quota wiring |
+| 2 | `deepseek.py` | prompt, model, tools, message shape |
+| 3 | `config.py` | model, limits and budgets |
+| 4 | `ratelimit.py` | budget keys, if metered differently |
+| 5 | `static/app.js` + HTML/CSS | the UI and its own stream parser |
+| 6 | `terraform/ecs/ecs.tf` + `variables.tf` | every new setting as an env entry |
+| 7 | `tests/test_main.py` | app-level tests that import everything |
+| 8 | `app.py` | router registration |
 
-**Eight files, five subsystems, one infra apply.** Every product team must hold the whole runtime in
-its head, and every change is a merge conflict with every other team. That is the tangle.
+**Eight files, five subsystems, one infra apply.** Every team must hold the whole runtime in its
+head, and every change conflicts with every other team's.
 
 [![Current state: one repository, one deployable](diagrams/01-current-state.svg)](diagrams/01-current-state.svg)
 
-### 1.2 Why splitting repos does not fix it
-
-After the split in the previous draft, the same team must now also understand: which repo the
-change belongs in, how the contract repo versions, whether gateway and UI pins agree, and how two
-pull requests order. The knowledge requirement went *up*, and the number of people who can break
-each other went *up* with it.
-
-The tangle is not caused by co-location. It is caused by **the absence of an abstraction**: the
-unit of extension today is "edit the core", so the core must be understood to extend it.
-
-### 1.3 The test this report is written against
-
-> A team that has never seen this codebase ships an agent and its UI, touching **zero files in the
-> platform repository**, and can name the three things it had to learn: the manifest schema, the run
-> event stream, and how to get a user token.
-
-Two measurements, both cheap to run every quarter:
-
-| Measure | Today | Target |
-| --- | --- | --- |
-| Platform source files a new team must read | ~13 (the package) + Terraform | **0** |
-| Time to first agent, including UI | 1–2 weeks of core work | **1 day** |
-| Time for the Nth agent | still 1–2 weeks | **~1 hour** |
-| Files touched by an agent change | 8, across 5 subsystems | **3, in one repo** (manifest, prompt, evals) |
-| Blast radius of a bad agent change | the whole service | one agent version, canary and kill switch |
-
-If the "files read" number is not zero, the platform leaked. That is the whole design goal.
+Pydantic AI removes roughly half of that list: the provider client, the stream format, the token
+counting and the retries. The manifest, registry and policy layer remove the rest.
 
 ---
 
-## 2. The unit of work: an agent is a versioned artifact
+## 1. Adopt vs build
 
-An agent is **data plus a prompt plus evals**, not a Python module. It is declared, validated,
-versioned and published; the platform executes it.
+| Concern | Adopt — Pydantic AI | Build — `zuchat-platform` |
+| --- | --- | --- |
+| Agent object | `Agent(model, deps_type, output_type, instructions, toolsets, capabilities)` | manifest schema + compiler |
+| Declarative definition | `Agent.from_spec` / `from_file` (YAML/JSON) | **our restricted manifest** — never their spec verbatim |
+| Model access | `deepseek:` provider, `OpenAIChatModel`, fallback, many providers | alias table, per-tenant routing, pinned resolution |
+| Streaming | `agent.run_stream_events()` → `AgentStreamEvent` … `AgentRunResultEvent` | run envelope, run record, version in the trace |
+| UI protocol | `AGUIAdapter` / `VercelAIAdapter` (`dispatch_request`) | catalog, version pinning, SDK |
+| Tools | `FunctionToolset`, `Toolset`, MCP | tool registry, allowlist, per-tenant credentials |
+| Human approval | `DeferredToolRequests` / `DeferredToolResults`, deferred tools | approval UI, resume endpoint, audit |
+| Per-run cost | `UsageLimits(output_tokens_limit=, request_limit=)` | per-agent caps compiled into the version |
+| Period spend | `SpendLimits(Budget(usd, window), store=…)` over Postgres/Redis (harness, 0.x) | one budget namespace per tenant, policy bounds, alerts |
+| Conversation state | `Conversation`, `ConversationTypeAdapter`, `conversation=` | tenant schema, retention, run log |
+| Evals | `pydantic_evals` `Dataset`, `Case`, `evaluate_sync` | CI gate, publish record, canary |
+| Traces | OpenTelemetry instrumentation; optional Logfire | dashboards, SLOs, audit export |
+| Deploy | none — it runs in your process | ECS service, infra, secrets |
+| **Registry, versions, channels** | **none** | **ours** |
+| **Catalog for UIs** | **none** | **ours** |
+| **Tenant identity and policy** | **none** | **ours** |
+| **Publish gate and ownership** | **none** | **ours** |
+
+Pydantic are explicit about the boundary: *"open-source, MIT-licensed Python packages that run in
+your own process… there is no Pydantic-hosted agent runtime."*
+That is the correct vendor posture for us — it runs on ECS, next to the existing FastAPI app.
+
+---
+
+## 2. The unit of work: our manifest, not a Pydantic AI spec
+
+Pydantic AI's own spec format is powerful enough to be code. Their documentation warns that a spec
+*"has the same authority as the code that builds the agent"*, can name **arbitrary MCP server URLs,
+including localhost and private addresses**, and runs with the machine's network access.
+
+Self-service YAML that can name any endpoint is not a platform, it is an SSRF primitive with a
+schema. So zuchat defines its **own, smaller schema**, and the platform compiles it:
 
 ```yaml
-# agents/support-triage/agent.yaml
+# agents/triage/agent.yaml
 apiVersion: zuchat/v1
 kind: Agent
 metadata:
-  name: support-triage
+  name: triage
   owner: team-support
-  labels:
-    surface: web            # which UI catalogs may show it
-    tier: public
+  labels: {surface: web, tier: public}
 spec:
   model:
-    alias: standard         # platform maps alias -> provider + model
-    maxOutputTokens: 800
-  instructions: prompts/triage.md
-  input:
-    schema: schemas/triage.input.json
-  output:
-    schema: schemas/triage.output.json
-    format: json
-  tools:
-    - name: kb.search
-      from: tool://kb
-      timeoutMs: 3000
-      maxCalls: 3
-    - name: ticket.read
-      from: tool://tickets
-      timeoutMs: 2000
-      maxCalls: 1
+    alias: standard              # never a provider model string
+  instructions: prompts/system.md
+  input:  {schema: schemas/input.json}
+  output: {schema: schemas/output.json, format: json}
+  tools: [kb.search, ticket.read]   # registry names, never URLs
   budget:
-    perRunTokens: 8000
-    dailyTokens: 500000
+    perRun: {usd: 0.05, tokens: 8000}
+    perDay: {usd: 5}
   safety:
     profile: public-chat
-    redact: [email, phone]
+    approvals: [ticket.write]
   evals:
-    suite: evals/
+    dataset: evals/triage.yaml
     minPassRate: 0.95
 ```
 
-**Why each field is data, not code**
+Deliberate omissions, each for a reason:
 
-| Field | The team decides | The platform does |
-| --- | --- | --- |
-| `model.alias` | how much reasoning it needs (`fast`, `standard`, `reasoner`) | provider, model id, key, fallback, price, rate limits |
-| `instructions` | the prompt | loads it, versions it with the manifest, traces it |
-| `input` / `output` schema | the shape of its input and result | validation, typed SDK, schema-driven UI |
-| `tools` | which capabilities it may use | sandbox, allowlist, timeouts, call caps, credentials |
-| `budget` | its spend envelope | enforcement across tasks, per user/team/agent, audit |
-| `safety` | which profile applies | redaction, moderation, fail-open/closed policy |
-| `evals` | the quality bar | runner, fixtures, pass-rate gate before publish |
+| Not in the manifest | Why |
+| --- | --- |
+| `model:` provider string | teams must not pick or pin a provider; alias resolution is a platform change |
+| `capabilities:` passthrough | a capability can add tools and network access; only the platform adds those |
+| MCP URLs / tool endpoints | the tool registry resolves names; no team-supplied egress |
+| arbitrary `model_settings` | temperature and token caps are policy, bounded by the platform |
+| Python | if it is not a prompt, a schema or a registered tool, it is a platform feature request |
 
-**Version and channel.** Every publish is immutable: `support-triage@1.4.0`. Consumers pin a version
-or a channel (`stable`, `canary`). A rollback is a pin change, not a redeploy — which is what makes
-a bad prompt a five-minute incident instead of an afternoon.
-
-**What is deliberately absent.** No arbitrary Python, no loops, no custom retrieval in the
-manifest. The only extension points are **tools** (a service the platform calls) and **schemas**.
-That is a real limitation, taken on purpose: every escape hatch is a piece of the tangle coming
-back. If an agent needs behaviour that is neither a prompt nor a tool, it is a product decision to
-add a new tool, owned by the platform.
+Everything a team writes is data the platform can validate, compile and refuse.
 
 ---
 
-## 3. Two contracts: the entire product surface
+## 3. Compiling a manifest into an agent
 
-Everything a product team touches is one of these. Nothing else is public.
+The compiler is the only place that turns data into a Pydantic AI `Agent`. It is deterministic: the
+same manifest plus policy produces the same compiled object, and its digest is what gets pinned.
 
-### 3.1 Publish (control)
+```python
+from decimal import Decimal
+from typing import Union
 
-```
-agent.yaml + prompts/ + schemas/ + evals/  ->  validate -> eval gate -> registry (immutable)
-```
+from pydantic_ai import Agent, DeferredToolRequests
+from pydantic_ai_harness import SpendLimits
+from pydantic_ai_harness.spend_limits import Budget, PostgresSpendStore
 
-Validation and evals run in the team's CI through a pinned, reusable workflow. Publishing is a
-merge by a human, and the platform records who published which version, with the eval report
-attached. A manifest that fails its own evals cannot be published.
+from zuchat.policy import Audit, Safety, alias_to_model
+from zuchat.tools import ToolRegistry
 
-### 3.2 Run (data)
+def compile_agent(v: AgentVersion) -> Agent[RunDeps, Output]:
+    spec = Manifest.model_validate_json(v.manifest_json)
 
-```
-POST /v1/agents/{name}/runs
-{ "input": { ... }, "version": "stable", "stream": true }
-```
-
-| Event | Payload | Why a UI needs it |
-| --- | --- | --- |
-| `run.started` | `runId, agent, version, traceId` | show provenance, start a timer |
-| `output.delta` | `text` | stream text |
-| `tool.call` | `callId, name, argsSummary` | show "searching knowledge base…" |
-| `tool.result` | `callId, status, ms` | show failure without guessing |
-| `output.final` | `content` or structured JSON | render the validated result |
-| `run.completed` | `usage, cost, finishReason` | budgets, usage display |
-| `run.failed` | `code, retryable` | retry or explain |
-
-All frames are additive-only and versioned. One generated client speaks them; a UI never parses
-SSE by hand, and never needs a new endpoint when an agent is added.
-
-### 3.3 Discovery: how a *new UI* consumes agents it has never seen
-
-`GET /v1/agents?label=surface:web` returns published manifests with their JSON Schemas. That is
-what makes the second half of the problem tractable:
-
-```ts
-const agents = await client.agents.list({ label: "surface:web" });
-
-// a catalog-driven page renders an input form from input.schema,
-// then streams the run; adding an agent adds no UI code
-const run = client.runs.stream({ agent: "support-triage", version: "stable", input });
-for await (const ev of run) {
-  if (ev.type === "output.delta") append(ev.text);
-  if (ev.type === "tool.call") showTool(ev.name, ev.status);
-  if (ev.type === "output.final") render(ev.content);
-}
+    return Agent(
+        # resolved and pinned at publish time, not per request
+        model=alias_to_model(v.resolved_model),
+        deps_type=RunDeps,
+        output_type=Union[spec.output_type(), DeferredToolRequests],
+        instructions=load_prompt(v),
+        toolsets=[ToolRegistry.subset(spec.tools, tenant=v.tenant)],
+        capabilities=[
+            SpendLimits(
+                budgets=[
+                    Budget(usd=Decimal(spec.budget.per_day_usd), window="day"),
+                ],
+                # one namespace per tenant; a Postgres store underneath
+                store=budget_store(v.tenant),
+            ),
+            Audit(v.name, v.version, v.digest),
+            Safety(spec.safety),
+        ],
+    )
 ```
 
-Two kinds of consumption, one contract:
+Two details that matter more than they look:
 
-- **Catalog-driven UI** — lists agents by label, renders inputs from schema. A new agent appears in
-  an existing surface with zero UI changes. This is what internal tools and admin pages should be.
-- **Bespoke UI** — a product surface uses the SDK directly for layout and interaction, but still
-  gets streaming, retries, tool status and errors from the same client.
-
-Both stop at the same boundary. Neither imports platform code.
+- **The alias is resolved at publish time and stored on the version.** If `standard` later points at
+  a new provider model, published agents do not silently change behaviour. Upgrading a model is a
+  new version, with evals and a canary.
+- **`DeferredToolRequests` is in `output_type`** whenever an agent has approval-gated tools. A run can
+  therefore end *interrupted* rather than complete; the run contract has a state for that, and the
+  UI needs to render it.
 
 ---
 
-## 4. What the platform owns
+## 4. The two contracts
 
 [![What a team owns and what it never needs to know](diagrams/05-abstraction-layers.svg)](diagrams/05-abstraction-layers.svg)
 
-The red band in that diagram is the actual deliverable. Every item below it is a thing a product
-team stops learning.
+### 4.1 Publish (control)
 
-| Capability | Team stops doing | Platform guarantees |
+```
+manifest + prompts + schemas + evals  →  validate → eval → registry (immutable)
+```
+
+Validation is ours; evaluation is `pydantic_evals`:
+
+```python
+from pydantic_evals import Dataset
+dataset = Dataset.from_file("evals/triage.yaml")
+report = dataset.evaluate_sync(lambda case: run_once(case.inputs))
+assert_pass_rate(report, spec.evals.min_pass_rate)   # our gate over their report
+```
+
+The publish is a pull request a human merges. On merge, CI writes an immutable row: name, version,
+manifest digest, **resolved model**, compiled policy, eval report, author, timestamp. A failing eval
+cannot produce a row.
+
+### 4.2 Run (data)
+
+```
+POST /v1/agents/{name}/runs
+{ "input": {...}, "version": "stable" | "1.4.0", "stream": true }
+```
+
+Internally, one endpoint over one compiled agent:
+
+```python
+async with agent.run_stream_events(
+    payload.input,
+    deps=deps,                       # user, tenant, agent, run_id
+    usage_limits=UsageLimits(...),   # per-run backstop
+    conversation=await store.load(...),  # Conversation
+) as events:
+    async for event in events:
+        yield envelope(event)        # AgentStreamEvent -> our typed frames
+```
+
+| Our frame | Source | Why a UI needs it |
 | --- | --- | --- |
-| Model access | picking providers, holding keys, handling their errors | aliases, keys, fallback, price, quota |
-| Streaming | SSE framing, heartbeats, disconnect handling, backpressure | typed event stream, cancellation, resume semantics |
-| Tools | writing HTTP clients, retries, credential plumbing | typed registry, sandbox, allowlist, timeouts, call caps |
-| State | owning a conversation store, idempotency | run log, optional session store, replay |
-| Spend | counting tokens, implementing budgets | per user/team/agent budgets, shared across tasks, audit |
-| Identity | cookie/JWT verification, service auth | user token claims, workload identity for tool calls |
-| Quality | bespoke test harnesses per agent | eval fixtures, pass-rate gate, regression reports |
-| Deploy | Dockerfiles, Terraform, task sizes, scaling | publish, canary, rollback, kill switch |
-| Observability | instrumenting traces and dashboards | one trace per run, spans per model/tool call, per-agent SLOs |
-| UI plumbing | hand-rolled stream parsers and error states | SDK + streaming hooks + schema renderer |
+| `run.started` | run id, agent, version, digest, trace id | provenance and support |
+| `output.delta` | `PartStartEvent` / `PartDeltaEvent` | stream text |
+| `tool.call` / `tool.result` | tool events | show "searching…", surface failures |
+| `run.interrupted` | `DeferredToolRequests` | approval needed; resume with a run id |
+| `output.final` | `AgentRunResultEvent` | validated structured result |
+| `run.completed` | `RunUsage` | tokens, cost, finish reason |
+| `run.failed` | exception class, retryable | retry or explain |
+
+We do **not** invent a new wire format for browsers: the gateway exposes **AG-UI** (and optionally
+Vercel AI) through Pydantic AI's `UIAdapter`. Our envelope adds `version` and `digest` to the start
+frame, because "which agent version answered" is a platform question the framework does not ask.
+Anything beyond that is a thin mapping, not a protocol.
+
+### 4.3 Discovery: how a new UI consumes agents it has never seen
+
+`GET /v1/agents?label=surface:web` returns published versions with their JSON Schemas. That is what
+lets a surface render a new agent without new frontend code:
+
+```ts
+const agents = await client.agents.list({ label: "surface:web" });
+const run = client.runs.stream({ agent: "triage", version: "stable", input });
+for await (const ev of run) {
+  if (ev.type === "output.delta") append(ev.text);
+  if (ev.type === "tool.call") showTool(ev.name, ev.status);
+  if (ev.type === "run.interrupted") showApproval(ev.pending);
+}
+```
+
+A catalog-driven page renders inputs from `input.schema` and needs no per-agent code. A bespoke
+surface uses the same client. Both stop at the contract.
+
+---
+
+## 5. What the platform is, concretely
 
 [![Control plane and data plane](diagrams/06-control-data-plane.svg)](diagrams/06-control-data-plane.svg)
 
-Two planes, deliberately separate:
+**Control plane** — thin, changes rarely:
 
-- **Control plane** — git manifests, validation, the eval gate, the immutable registry, compiled
-  policy (budgets, safety profile, tool allowlist). It changes rarely, and it is where governance
-  lives.
-- **Data plane** — the run gateway, orchestrator loop, model router, tool executor, run log. It
-  changes often and must be boring. It reads a pinned version and policy; it never writes them.
+- manifest schema and validator (ours)
+- eval gate (`pydantic_evals` + our CI workflow)
+- registry: immutable versions, digests, resolved models, channels
+- policy compiler: budgets, safety profile, tool allowlist, tenant limits
+- catalog API
 
-That split is what lets a product team move fast without being able to change a budget ceiling, a
-model allowlist, or a safety profile.
+**Data plane** — `zuchat-platform`, one FastAPI service on ECS:
+
+- run gateway: auth, tenant resolution, version/channel lookup, envelope
+- compiled-agent cache keyed by digest
+- `RunDeps`: user, tenant, agent, run id, policy snapshot
+- tool registry (Pydantic AI `FunctionToolset`s per tool, credentials injected per tenant)
+- `SpendLimits` over Postgres (or Redis) — **the fix for process-local counters**
+- `Conversation` store (Postgres), run record, OTel traces
+- approval resume endpoint for deferred tool calls
+
+**SDK** — schemas + generated clients + React streaming hooks, built on AG-UI types.
+
+Note what is *not* on that list: an orchestrator loop, a streaming protocol, a provider client, a
+retry policy, a token counter. Pydantic AI owns those. That is roughly two-thirds of the previous
+draft's build cost removed.
 
 ---
 
-## 5. Repositories follow teams, not layers
+## 6. Repositories follow teams, not layers
 
 [![Target repository map](diagrams/02-target-repos.svg)](diagrams/02-target-repos.svg)
 
-| Repo | Contains | Owner | Why it is a repo |
+| Repo | Contains | Owner | Why a repo |
 | --- | --- | --- | --- |
-| `zuchat-platform` | run gateway, orchestrator, model router, tool executor, registry, infra modules | platform | the only repo with cloud credentials and provider keys |
-| `zuchat-sdk` | manifest JSON Schema, event schemas, generated TS/Python clients, React hooks | platform + DX | versioned, published; every product repo depends on it |
-| `agents-<team>` | `agent.yaml`, prompts, input/output schemas, evals | each product team | separate permissions and on-call, when that is true |
-| `web-<surface>` | a product UI, built on the SDK | product/frontend | separate release cadence, when that is true |
+| `zuchat-platform` | gateway, registry, compiler, policy, toolsets, infra | platform | only repo with cloud credentials and provider keys |
+| `zuchat-sdk` | manifest + event schemas, TS/Python clients, React hooks | platform + DX | versioned, published |
+| `agents-<team>` | manifests, prompts, input/output schemas, eval datasets | product team | separate permissions and on-call, when true |
+| `web-<surface>` | product UI on the SDK | frontend | separate cadence, when true |
 
-**The rule that keeps it a platform: features are directories, teams are repositories.**
+**Features are directories; repositories are teams.** Adding an agent is a manifest directory and a
+PR. Never a new repo, never a Terraform change, never a provider key.
 
-Adding an agent is a pull request to a manifest directory in a repo the team already owns. It is
-not a new repository, not a new service, not a Terraform change. Repository count should grow with
-**teams that need isolation**, never with features.
+That also settles the earlier drafts' extra repos:
 
-That also corrects the previous draft's "one repo per seam". Identity, contracts and infra do not
-each need a repo:
-
-| Previous proposal | What it becomes | Split only when |
-| --- | --- | --- |
-| `zuchat-contracts` repo | the `zuchat-sdk` package | an external consumer needs the schemas |
-| `zuchat-identity` repo | a capability inside `zuchat-platform` | a second product must verify users independently |
-| `zuchat-web` repo | `web-<surface>` | a frontend team owns its own cadence |
-| `zuchat-model-gateway` repo | the data plane of `zuchat-platform` | the platform outgrows one deploy unit |
+| Earlier proposal | Now |
+| --- | --- |
+| `zuchat-contracts` | the `zuchat-sdk` package |
+| `zuchat-identity` | a capability in `zuchat-platform` until a second product verifies users |
+| `zuchat-model-gateway` | the data plane of `zuchat-platform`; Pydantic AI is the router |
+| `zuchat-web` per surface | only when a surface has its own team and cadence |
 
 ---
 
-## 6. What happens to today's code
+## 7. What happens to today's code
 
-| Today | Becomes | Consequence |
+| Today | Becomes | Net |
 | --- | --- | --- |
-| `deepseek.py` (199 lines) | model router adapter behind an `alias → provider` table | the only file that knows a provider exists |
-| `api_routes.py` chat + `_events` | generic run endpoint + orchestrator | no per-agent route, no per-agent stream code |
-| `ratelimit.py` (223 lines) | budget middleware keyed by `(user, team, agent)` | one enforcement point, shared store, survives deploys |
-| `config.py` | platform settings + per-agent defaults | the LLM key no longer gates `/health` or `/login` |
-| `auth.py` | user identity, plus workload identity for tools | product services never touch a session cookie |
-| `static/app.js` (392 lines) | SDK + streaming hook + schema renderer | the 200-line stream parser becomes a library call |
-| `pages.py` / static HTML | one catalog-driven page, or a team's own surface | a new agent needs no page |
-| `terraform/**` (933 lines) | platform repo, per-service task roles | product repos hold no AWS credential |
-| `tests/test_main.py` (49 tests) | conformance suite + contract tests + per-agent evals | quality moves next to the agent, not the app |
+| `deepseek.py` (199 lines) | `pydantic_ai` DeepSeek provider + alias table | **deleted** |
+| `ratelimit.py` (223 lines) | `UsageLimits` per run + `SpendLimits` over Postgres | **deleted** |
+| `api_routes.py` chat + `_events` | run gateway + event envelope | ~40 lines |
+| `bodylimit.py` | stays at the edge; ALB/WAF cap | unchanged |
+| `config.py` | platform settings, alias table, policy bounds | grows slightly |
+| `auth.py` | user identity + `RunDeps.tenant` | unchanged |
+| `static/app.js` (392 lines) | SDK + AG-UI streaming hook | **deleted** |
+| `tests/test_main.py` | `TestModel` unit tests + per-agent eval datasets | split |
+| `terraform/**` (933 lines) | platform repo | moved |
+
+The aesthetic point: the two files most responsible for coupling — the provider client and the
+in-process limiter — disappear entirely, because they were the parts of the platform Pydantic AI
+already ships.
 
 ---
 
-## 7. Tradeoffs
+## 8. Tradeoffs
 
-This design has real costs, and they are larger than the repo split's. They are the reason the
-plan is staged.
-
-| # | Tension | The cost | The decision to make |
+| # | Tension | Cost | Decision |
 | --- | --- | --- | --- |
-| T1 | A manifest runtime is a product | versioning, back-compat, docs, on-call, a migration path for every schema change | name one owner before P0; it is not a side project |
-| T2 | Declarative agents have a ceiling | custom retrieval, post-processing, loops and multi-agent graphs are not expressible | tools are the only escape hatch; anything else is a platform change |
-| T3 | The gateway is a hot path | streaming, long-lived connections, tool latency, cancellation, abandoned runs | HA, per-run timeouts, backpressure; budget the stream-accounting bug class |
-| T4 | Evals become a release gate | flaky evals block shipping; eval quality becomes a platform duty | pass thresholds, quarantine, human override with an audit trail |
-| T5 | Tools give prompt injection hands | injected tool output can now cause actions, not just bad text | untrusted tool output, allowlist, no ambient credentials, approval for writes |
-| T6 | Config sprawl | per-agent budgets, safety, tools multiply | defaults and inheritance: env → team → agent, never the reverse |
-| T7 | UI kit lock-in | too much kit and teams fork it; too little and every UI reimplements streaming | ship primitives and hooks, not page frameworks |
-| T8 | Composition explodes cost and traces | agent-calls-agent is unbounded | support tool calls now, agent graphs only with a real use case |
-| T9 | Self-service ships bad prompts | teams can publish quality regressions without a platform review | evals + canary + per-agent kill switch; never review prompts by hand |
-
-**And the comparison the boss will ask for** — cost of the Nth agent:
-
-| Shape | Files touched per new agent | Cross-team coordination | Blast radius of a bad prompt |
-| --- | --- | --- | --- |
-| Today (monolith) | 8 across 5 subsystems | every merge conflicts with every team | the whole service |
-| Repo split, no abstraction | 8, plus contract and version pins | two PRs, ordering rules, repo knowledge | one service, but everyone must track the contract |
-| Agent platform | 3, in the team's repo | none; publish is a PR in their repo | one agent version, canary + kill switch |
-
-The repo split does not change the first column. That is why it cannot be the answer on its own.
+| T1 | Framework coupling | agent semantics, event names and upgrade cadence are Pydantic's; a 3.x is their call | pin minor, own the adapter layer, keep manifests independent |
+| T2 | `pydantic-ai-harness` is 0.x | `SpendLimits` may change between minor releases | pin exactly; wrap behind our `BudgetPolicy` so a break is one file |
+| T3 | Their spec is code-equivalent | raw `from_spec` from a team repo is an SSRF and privilege boundary hole | our restricted schema; never load untrusted specs |
+| T4 | AG-UI lock-in | the browser protocol is theirs, not ours | acceptable; it is the standard frontend frameworks speak. Add only a version/digest envelope |
+| T5 | No hosted runtime | we operate the gateway: HA, streaming, cancellation, on-call | already true today on ECS; this does not add a vendor |
+| T6 | Hosted Gateway / Logfire | convenience and cost caps, but traces leave the account | default to direct DeepSeek key + our OTel; revisit for multi-provider failover |
+| T7 | Alias drift | a platform model change could silently alter every agent | resolve at publish, pin on the version, canary new versions |
+| T8 | Eval cost | real-model evals spend money on every PR | budget per eval run with `UsageLimits`; run on label, not every push |
+| T9 | Registry still ours | versions, channels, rollback, audit are bespoke | that is the deliverable; it is ~1,500 lines, not a platform team |
+| T10 | Declarative ceiling | some agents need behaviour that is not a prompt or a tool | tools are the extension point; anything else is a platform change |
 
 ---
 
-## 8. Failure modes to design against
+## 9. Failure modes
 
-| Failure | What it looks like | Countermeasure |
+| Failure | Looks like | Countermeasure |
 | --- | --- | --- |
-| Distributed monolith | six repos, every change needs three PRs, teams still read the core | land the agent contract first; split repos last, and only per team |
-| YAML PhD | the manifest grows conditionals, loops and templating | manifest stays data; new behaviour is a tool, not a syntax |
-| God gateway | the platform owns models, tools, state, auth, deploys and the UI | start with models + budgets + audit; add tools behind a flag |
-| Registry theatre | manifests in git, but deploys still happen from a laptop | publish only through the pipeline; no manual version writes |
-| Eval flakiness | the gate is bypassed because it fails randomly | threshold + quarantine + recorded fixtures; measure flake rate |
-| Tool sprawl | every team writes its own tool client and credentials | typed tool registry, one credential model, no per-team secrets |
-| Platform bottleneck | platform team reviews agent PRs "just to be safe" | they publish policy and evals; they do not approve prompts |
-| Premature platform | one team, two agents, three months of platform work | stage gate: if fewer than ~4 agents are planned in 12 months, do P0 only |
+| Raw spec passthrough | a team YAML names `mcp://169.254.169.254` | restricted schema; tool names only; validate and refuse |
+| YAML PhD | manifest grows conditionals and templating | manifest stays data; new behaviour is a registered tool |
+| Alias drift | model swap changes every agent's behaviour overnight | resolved+pinned at publish; eval gate; canary |
+| Harness breakage | a 0.x bump changes `SpendLimits` | pin exact; adapter class; CI upgrade test |
+| Eval flake | gate bypassed because it fails randomly | thresholds, quarantine, recorded datasets, flake rate metric |
+| Gateway as god service | auth, tools, state, deploys, UI all in one box | one deploy unit, but modules with tests; split only on load evidence |
+| Registry theatre | rows exist, but deploys bypass them | publish only through CI; no manual writes; registry is the only resolver |
+| Platform bottleneck | platform team reviews every prompt | they publish policy and evals; they do not approve prompts |
 
 ---
 
-## 9. Plan
+## 10. Plan
 
 [![Staged roadmap](diagrams/04-roadmap.svg)](diagrams/04-roadmap.svg)
 
-### 9.1 The golden path this plan is building
-
 [![The golden path for a new agent](diagrams/07-golden-path.svg)](diagrams/07-golden-path.svg)
 
-### 9.2 Stages
+| Stage | Work | Exit test |
+| --- | --- | --- |
+| **P0 — Runtime swap** (1 wk) | manifest schema + compiler; `compile_agent`; one run endpoint over `run_stream_events`; AG-UI envelope; port chat to `chat@1`; delete `deepseek.py` and `ratelimit.py` | existing chat works through the generic path; a second agent ships as a manifest only |
+| **P1 — Registry + eval gate** (1 wk) | Postgres registry; `pydantic_evals` in CI; immutable versions; channels | a failed eval cannot publish; rollback is a channel pin |
+| **P2 — Tools + approvals** (1–2 wks) | `FunctionToolset` registry; allowlist; credentials per tenant; `DeferredToolRequests` + resume | a tool-using agent ships with no platform code; a write needs approval |
+| **P3 — Policy + catalog** (1–2 wks) | `SpendLimits` per tenant, audit records, `GET /v1/agents`, kill switch | a team publishes and rolls back alone; catalog renders it |
+| **P4 — SDK + UI kit** (1 wk) | generated clients, AG-UI React hook, schema renderer | a new agent's UI is a config change |
+| **P5 — Split repos** (1 wk each) | platform, sdk, agents-`<team>`, web-`<surface>`; infra moves | no product repo has a cloud credential |
 
-| Stage | Work | Exit test | Stops being reversible after |
-| --- | --- | --- | --- |
-| **P0 — Agent run abstraction** (1–2 wks) | `AgentSpec` loaded from YAML; one generic run endpoint; typed event stream; budget middleware keyed by agent; port the current chat to `chat@1`; generate a TS client | current chat works through the generic path; a second trivial agent ships with only a manifest, prompt and eval — no Python | no |
-| **P1 — Eval gate + registry in git** (1–2 wks) | manifest schema validation in CI; recorded-fixture eval runner; version = immutable tag; publish records version + eval report | a manifest that fails evals cannot be published; rollback is a pin change | no |
-| **P2 — Tools + policy** (2–4 wks) | typed tool registry; allowlist, timeouts, call caps; safety profiles; untrusted tool output handling | a tool-using agent ships with no platform code change; a write tool needs approval | yes — tool contracts are hard to change |
-| **P3 — Control plane as a service** (2–3 wks) | publish API, channels and canary, per-agent budgets, audit + traces, kill switch | a team publishes and rolls back without a platform engineer | yes |
-| **P4 — SDK GA + UI kit** (1–2 wks) | generated clients, streaming hooks, schema-driven renderer, local `dev` with fixtures | a new agent's UI is a config change, not a new stream parser | no |
-| **P5 — Split repositories** (≈1 wk per repo) | platform, sdk, agents-`<team>`, web-`<surface>`; infra moves to platform | no product repo holds AWS credentials or provider keys | yes |
+**Total to self-service: ~6–8 engineer-weeks**, down from 9–14 in the framework-agnostic draft,
+because the runtime is adopted rather than written.
 
-**P0 and P1 happen inside the current repository. No new repos.** That is the direct answer to "how
-does this become a platform": by inverting the dependency, so the platform owns the run loop and
-teams own declarative artifacts. The repo split is P5, and by then it is mechanical.
+**Parallel, 3–5 days:** move Terraform out of the app repo, stop pushing `:latest`, remove the AWS
+apply role from the app repo. Credential blast radius, independent of P0.
 
-**Parallel delivery track (3–5 days, independent).** Move Terraform out of the app repo, stop
-pushing `:latest`, and remove the AWS apply role from the app repo. This reduces credential blast
-radius today and does not block P0. It is hardening, not the platform.
-
-### 9.3 Break-even, so the decision is economic
-
-Assumption, to be checked rather than believed: an agent today costs 1–2 weeks of core work plus
-coordination; the platform is ~9–14 engineer-weeks to P3 and ~0.5 FTE ongoing.
-
-| Agents in the next 12 months | Recommendation |
-| --- | --- |
-| 0–1 | Do P0 only (2 weeks). It removes the worst coupling and costs little |
-| 2–3 | P0 + P1. Still one repo; still no platform team |
-| 4–6 | P0–P3 breaks even within the year |
-| 7+ | P0–P5; the platform is cheaper than the coordination |
+Break-even: if an agent costs 1–2 weeks of core work today, **4–6 agents** pays back the platform
+within the year. Fewer than two: do P0 only.
 
 ---
 
-## 10. Using AI more safely
+## 11. Using AI more safely
 
-The platform is the mechanism, not a side benefit. Two directions:
+The platform is now a **narrow** surface, which is what makes agents safe to run on it.
 
-### 10.1 Agents changing the codebase
-
-| Repo | What an agent can reach | Why that is the point |
-| --- | --- | --- |
-| `agents-<team>` | manifests, prompts, eval fixtures | a bad change is caught by evals and canaried, and can only affect that agent |
-| `web-<surface>` | UI code, SDK calls | no provider key, no IAM, no runtime loop |
-| `zuchat-sdk` | schemas and generated clients | contract changes are visible to every consumer at compile time |
-| `zuchat-platform` | runtime, tools, infra, credentials | small, reviewed by the platform owner; the only place with cloud write |
-
-The previous draft's controls still apply — human merges, no production credential in product repos,
-reusable workflows pinned by SHA, `CODEOWNERS` on workflows — but they now have a **structural**
-basis: the product repos contain no runtime and no secrets, so "an agent in the product repo cannot
-reach production" is a property of the repo's contents, not a policy someone must remember.
-
-### 10.2 The AI product
-
-| Risk | Platform control |
+| Risk | Control |
 | --- | --- |
-| Provider key reachable from product code | key exists only in the platform's task role |
-| No model allowlist | alias table is server-side; clients cannot name a provider model |
-| No prompt/response policy | safety profile compiled into the agent version, enforced at the egress point |
-| No audit trail | one record per run: actor, agent, version, tokens, cost, tool calls, decision, trace |
-| Budgets reset on deploy | shared store; per user, team, agent and global; survives deploys |
-| Prompt injection through tools | tool output is untrusted data, never instructions; allowlist, call caps, approval for writes |
-| Bad prompt reaches everyone | eval gate, canary channel, per-agent kill switch |
-| No cost attribution | spend by team and agent, exported as a metric and a dashboard |
+| A team manifest reaches an internal address | restricted schema; no URLs; tool registry only |
+| A team adds an unvetted capability | no capability passthrough; platform adds `SpendLimits`, `Safety`, `Audit` |
+| Provider key in product code | key only in the platform task role; product repos hold none |
+| Budget reset on deploy | `SpendLimits` over Postgres/Redis, per tenant and per agent |
+| Runaway loop | `UsageLimits(request_limit=, output_tokens_limit=)` per run |
+| Destructive tool call | `DeferredToolRequests`; approval before the run resumes |
+| Bad prompt reaches everyone | eval gate, canary channel, digest pin, kill switch |
+| Prompt injection through tool output | toolsets return untrusted data; approvals for writes; no ambient credentials |
+| No audit | one run record + OTel trace: actor, tenant, agent, version, digest, tokens, cost, tool calls |
+| An agent editing the codebase | `agents-<team>` contains manifests and evals; nothing it writes can reach infra |
 
 [![Runtime and trust boundaries](diagrams/03-runtime-and-trust.svg)](diagrams/03-runtime-and-trust.svg)
 
-The new risk this design creates is **tool execution**. Before tools, a malicious prompt produced
-bad text; after tools, it can produce actions. The gateway must treat every tool result as
-untrusted input, never let it alter policy, and require explicit approval for anything that writes.
-That is why P2 is the stage with the longest review, and why tools do not ship before the run log
-and budgets do.
+And the org invariants hold: a human merges, production apply stays behind a reviewed environment,
+and no product repository has a credential that can change production.
 
 ---
 
-## 11. Cost and decisions
+## 12. Cost and decisions
 
 | Item | One-off | Ongoing |
 | --- | --- | --- |
-| P0–P3 platform work | ~9–14 engineer-weeks | ~0.5 FTE (owner, evals, SDK, on-call) |
-| P4 SDK + UI kit | 1–2 weeks | part of the same owner |
+| P0–P3 | ~4–6 engineer-weeks | ~0.5 FTE (owner, evals, tools, on-call) |
+| P4 SDK + UI kit | ~1 week | same owner |
 | P5 repo split | ~1 week per repo | ~0.5–1 day per repo per month |
 | Runtime | — | ~$25–60/month above today |
 
-The ongoing 0.5 FTE is the real cost, and it is the item most likely to be denied. Without a named
-owner, the platform becomes a second, more elaborate tangle: manifests nobody validates, evals that
-do not run, a gateway nobody patches.
-
 | # | Decision | Recommendation |
 | --- | --- | --- |
-| D1 | How many new agents in the next 12 months? | this sets the plan (see §9.3); do not build P2+ for one agent |
-| D2 | Who owns the runtime (0.5 FTE)? | name them before P0, or do P0 only |
-| D3 | May agents take write actions? | not before P2's audit, approval and kill switch exist |
-| D4 | Declarative-only, or an escape hatch? | declarative-only; tools are the extension point |
-| D5 | Who can override a failed eval? | platform owner, with a recorded reason; not the author |
-| D6 | Do product repos need separate permissions? | if yes, split at P5; if no, directories with `CODEOWNERS` |
+| D1 | How many agents in 12 months? | <2 → P0 only; 2–3 → P0–P1; 4–6 → P0–P3; 7+ → all |
+| D2 | Who owns the platform (0.5 FTE)? | name them before P0, or do P0 only |
+| D3 | Direct DeepSeek key, or Pydantic AI Gateway? | direct key + our OTel first; Gateway when multi-provider failover is real |
+| D4 | Logfire, or OTel to existing tooling? | OTel first; Logfire only if trace UX is the bottleneck and data policy allows |
+| D5 | Postgres or Redis for spend? | Postgres — we already need it for the registry, and it is one fewer service |
+| D6 | Accept `pydantic-ai-harness` 0.x for `SpendLimits`? | yes, pinned and wrapped; otherwise write the one capability ourselves |
+| D7 | AG-UI or Vercel AI for browsers? | AG-UI — it is the more general protocol and both adapters exist |
 
 ---
 
-## Appendix A — Couplings that constrain the platform
+## Appendix A — Couplings this design removes
 
-These are unchanged by the reframing. They are the constraints the runtime must absorb.
-
-| # | Coupling | Evidence | What the platform does about it |
+| # | Coupling | Evidence | How it goes away |
 | --- | --- | --- | --- |
-| C1 | One composition root imports every feature | `app.py:10-13`, `app.py:58-61` | one run router, not one per agent |
-| C2 | Config is global and the LLM key is required | `config.py:15`; `app.py:19`; `ops_routes.py:30` | key moves to the platform; teams carry none |
-| C3 | Spend policy and provider I/O share a handler | `api_routes.py:40-169` | orchestrator + budget middleware, separate from HTTP |
-| C4 | Counters are process-local | `ratelimit.py:10-12`, `:204` | shared store; per-agent keys; survives deploys |
-| C5 | Auth and app share a signed cookie | `auth.py:53-63`, `app.py:39-46` | identity capability; product code never sees the secret |
-| C6 | UI hardcodes same-origin `/api` calls | `static/app.js:308`, `:355` | SDK + generated client; UI is origin-agnostic |
-| C7 | Infra applies from the app repo | `terraform-apply.yml`; `terraform/ecs/*` | infra lives in the platform repo; delivery track fixes this first |
-| C8 | Repo identity is hardcoded in IAM trust | `github_actions.tf:11-26` | parameterised per environment, not per service |
+| C1 | One composition root imports every feature | `app.py:10-13`, `:58-61` | one run router; agents are data |
+| C2 | Config is global and the LLM key is required | `config.py:15`; `app.py:19`; `ops_routes.py:30` | key lives in the platform; `RunDeps` carries the rest |
+| C3 | Spend policy and provider I/O share a handler | `api_routes.py:40-169` | Pydantic AI runtime + policy capabilities |
+| C4 | Counters are process-local | `ratelimit.py:10-12`, `:204` | `SpendLimits` with a Postgres store |
+| C5 | Auth and app share a signed cookie | `auth.py:53-63`, `app.py:39-46` | identity stays at the edge; `RunDeps.tenant` downstream |
+| C6 | UI hardcodes same-origin `/api` calls | `static/app.js:308`, `:355` | SDK + AG-UI adapter |
+| C7 | Infra applies from the app repo | `terraform-apply.yml`; `terraform/ecs/*` | infra moves to the platform repo |
+| C8 | Repo identity hardcoded in IAM trust | `github_actions.tf:11-26` | parameterised per environment |
 | C9 | Mutable `:latest` alongside the SHA tag | `Makefile:push`; `main.tf:26` | digest pinning; immutable publishes |
-| C10 | Tests are app-level only | `tests/test_main.py:1-52` | conformance + contract tests + per-agent evals |
+| C10 | Tests are app-level only | `tests/test_main.py:1-52` | `TestModel` units + per-agent evals |
 
 ## Appendix B — Evidence
 
 Observed at `bf8fbf1`.
 
-There is no agent in the code: one user message, a string request, and no tool or history support.
+There is no agent in the code: one user message, a string request, no tools or history.
 
 ```
 grep -n '"messages"\|class ChatRequest\|message: str' src/zuchat/deepseek.py src/zuchat/api_routes.py
@@ -513,33 +496,23 @@ grep -n '^    get_settings()' src/zuchat/app.py
 19:    get_settings()
 ```
 
-Infrastructure is applied by the same repository's pipeline:
-
-```
-grep -n 'environment: production\|terraform apply' .github/workflows/terraform-apply.yml
-```
-
-```
-33:    environment: production
-78:          terraform apply -auto-approve -input=false
-```
-
-The deploy trust anchor names one repository, so a new repo means editing this file:
-
-```
-grep -n 'github_repo  = \|github_subject_prefix = "repo' terraform/ecs/github_actions.tf
-```
-
-```
-11:  github_repo  = "saxeum/zuchat"
-22:  github_subject_prefix = "repo:saxeum@343752441/zuchat@1457250024"
-```
-
 ## Appendix C — Sources
 
-- `src/zuchat/{deepseek,api_routes,app,config,ratelimit,auth}.py` — the runtime the platform absorbs
-- `src/zuchat/static/app.js` — the UI coupling the SDK removes
-- `terraform/ecs/{ecs,iam,github_actions,main}.tf` — credentials, deploy and trust
-- `.github/workflows/{ci,docker,terraform-plan,terraform-apply}.yml` — change and deploy path
-- `tests/test_main.py` — the current safety net
-- Repo rules: `AGENTS.md` (human merges; nothing applied outside the pipeline)
+Versions read on 2026-11-20: `pydantic-ai` 2.71.0, `pydantic-evals` 2.71.0, `google-adk` 2.15.0.
+
+| Topic | Page |
+| --- | --- |
+| Agents, `run_stream_events`, `UsageLimits` | `pydantic.dev/docs/ai/core-concepts/agents/` |
+| Agent Specs (`from_file`, `from_spec`) | `pydantic.dev/docs/ai/core-concepts/agent-spec/` |
+| Dependencies (`deps_type`, `RunContext`) | `pydantic.dev/docs/ai/core-concepts/dependencies/` |
+| Output and deferred approvals | `pydantic.dev/docs/ai/core-concepts/output/` |
+| Conversation persistence | `pydantic.dev/docs/ai/core-concepts/persistence/` |
+| Toolsets | `pydantic.dev/docs/ai/tools-toolsets/toolsets/` |
+| Deferred tools / approvals | `pydantic.dev/docs/ai/tools-toolsets/deferred-tools/` |
+| Capabilities and hooks | `pydantic.dev/docs/ai/capabilities/overview/` |
+| Spend limits and stores | `pydantic.dev/docs/ai/harness/spend/` |
+| Evals | `pydantic.dev/docs/ai/evals/evals/` |
+| UI event streams (AG-UI, Vercel) | `pydantic.dev/docs/ai/integrations/ui/overview/` |
+| Production / no hosted runtime | `pydantic.dev/docs/ai/production/` |
+| DeepSeek provider | `pydantic.dev/docs/ai/models/deepseek/` |
+| ADK (rejected: GCP-shaped) | `adk.dev/` |

@@ -42,8 +42,8 @@
   <rect x="410" y="130" width="240" height="170" rx="9" fill="#f5f3ff" stroke="#a78bfa" stroke-width="1.8"/>
   <text x="424" y="156" class="bt">zuchat-sdk</text>
   <text x="424" y="180" class="bs">manifest + event schemas</text>
-  <text x="424" y="197" class="bs">generated TS + Python clients</text>
-  <text x="424" y="214" class="bs">React hooks and renderer</text>
+  <text x="424" y="197" class="bs">AG-UI types + generated clients</text>
+  <text x="424" y="214" class="bs">React streaming hooks</text>
   <text x="424" y="231" class="bs">published packages, semver</text>
   <rect x="424" y="248" width="86" height="20" rx="5" fill="#7c3aed"/>
   <text x="467" y="262" class="pill" text-anchor="middle">the contract</text>
@@ -52,8 +52,8 @@
   <rect x="710" y="130" width="350" height="170" rx="9" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.8"/>
   <text x="724" y="156" class="bt">zuchat-platform</text>
   <text x="724" y="180" class="bs">control plane: registry, evals, policy</text>
-  <text x="724" y="197" class="bs">data plane: run gateway, orchestrator,</text>
-  <text x="724" y="214" class="bs">model router, tool executor</text>
+  <text x="724" y="197" class="bs">data plane: run gateway, compiler,</text>
+  <text x="724" y="214" class="bs">Pydantic AI Agent, toolsets</text>
   <text x="724" y="231" class="bs">infra: Terraform, IAM, tasks</text>
   <rect x="724" y="248" width="286" height="20" rx="5" fill="#b91c1c"/>
   <text x="867" y="262" class="pill" text-anchor="middle">only repo with cloud credentials and provider keys</text>

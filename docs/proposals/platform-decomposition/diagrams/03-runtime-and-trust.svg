@@ -51,9 +51,9 @@
 
   <rect x="450" y="150" width="280" height="182" rx="8" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.7"/>
   <text x="464" y="174" class="bt">zuchat-platform</text>
-  <text x="464" y="196" class="bd">run gateway + orchestrator</text>
-  <text x="464" y="213" class="bd">model router + tool executor</text>
-  <text x="464" y="230" class="bd">registry · budgets · audit</text>
+  <text x="464" y="196" class="bd">run gateway + compiler</text>
+  <text x="464" y="213" class="bd">Pydantic AI Agent + toolsets</text>
+  <text x="464" y="230" class="bd">SpendLimits · registry · audit</text>
   <text x="464" y="252" class="bd" fill="#6d28d9">one deploy unit. Not microservices.</text>
   <rect x="464" y="268" width="252" height="22" rx="5" fill="#ede9fe"/>
   <text x="590" y="283" class="bd" fill="#5b21b6" text-anchor="middle">the only task role that can read the provider key</text>
